@@ -29,7 +29,7 @@ setup(
         "pyvcd~=0.2.0", # for nmigen.pysim
         "Jinja2~=2.11", # for nmigen.build
     ],
-    packages=find_packages(),
+    packages=find_packages(exclude=["*.test*"]),
     entry_points={
         "console_scripts": [
             "nmigen-rpc = nmigen.rpc:main",
