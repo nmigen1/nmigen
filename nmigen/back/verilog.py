@@ -1,9 +1,3 @@
-import os
-import re
-import subprocess
-import itertools
-
-from .._toolchain import *
 from . import rtlil
 
 
