@@ -421,19 +421,17 @@ While arithmetic computations never result in an overflow, :ref:`assigning <lang
 
 The following table lists the arithmetic operations provided by nMigen:
 
-============ ========================== ======
-Operation    Description                Notes
-============ ========================== ======
+============ ==========================
+Operation    Description
+============ ==========================
 ``a + b``    addition
 ``-a``       negation
 ``a - b``    subtraction
 ``a * b``    multiplication
-``a // b``   floor division             [#opA1]_
-``a % b``    modulo                     [#opA1]_
+``a // b``   floor division
+``a % b``    modulo
 ``abs(a)``   absolute value
-============ ========================== ======
-
-.. [#opA1] Divisor must be unsigned; this is an nMigen limitation that may be lifted in the future.
+============ ==========================
 
 
 .. _lang-cmpops:
