@@ -10,7 +10,7 @@ This section demonstrates the basic nMigen workflow to provide a cursory overvie
 A counter
 =========
 
-As a first example, consider a counter with a fixed limit, enable, and overflow. The code for this example is shown below. `Download <_code/up_counter.py>`_ and run it:
+As a first example, consider a counter with a fixed limit, enable, and overflow. The code for this example is shown below. :download:`Download <_code/up_counter.py>` and run it:
 
 .. code-block:: shell
 
