@@ -3,7 +3,7 @@ Code conversion
 
 .. py:module:: nmigen.lib.coding
 
-The ``nmigen.lib.coding`` package provides modules for conversion between different encodings of binary numbers.
+The :mod:`nmigen.lib.coding` package provides modules for conversion between different encodings of binary numbers.
 
 
 One-hot coding
