@@ -195,8 +195,8 @@ class ResetSynchronizer(Elaboratable):
         Maximum delay from the input signal's clock to the first synchronization stage, in seconds.
         If specified and the platform does not support it, elaboration will fail.
 
-    Platform override
-    -----------------
+    Platform overrides
+    ------------------
     Define the ``get_reset_sync`` platform method to override the implementation of
     :class:`ResetSynchronizer`, e.g. to instantiate library cells directly.
     """
@@ -219,9 +219,9 @@ class PulseSynchronizer(Elaboratable):
     """A one-clock pulse on the input produces a one-clock pulse on the output.
 
     If the output clock is faster than the input clock, then the input may be safely asserted at
-    100% duty cycle. Otherwise, if the clock ratio is `n`:1, the input may be asserted at most once
-    in every `n` input clocks, else pulses may be dropped. Other than this there is no constraint
-    on the ratio of input and output clock frequency.
+    100% duty cycle. Otherwise, if the clock ratio is ``n``:1, the input may be asserted at most
+    once in every ``n`` input clocks, else pulses may be dropped. Other than this there is
+    no constraint on the ratio of input and output clock frequency.
 
     Parameters
     ----------
