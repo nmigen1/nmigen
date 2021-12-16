@@ -3,7 +3,7 @@ First-in first-out queues
 
 .. py:module:: nmigen.lib.fifo
 
-The ``nmigen.lib.fifo`` package provides modules for first-in, first-out queues.
+The ``nmigen.lib.fifo`` module provides building blocks for first-in, first-out queues.
 
 
 .. autoclass:: FIFOInterface
