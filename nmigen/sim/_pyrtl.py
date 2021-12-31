@@ -383,6 +383,13 @@ class _StatementCompiler(StatementVisitor, _Compiler):
     def on_Cover(self, stmt):
         raise NotImplementedError # :nocov:
 
+    def on_Display(self, stmt):
+        args = []
+        for i in range(len(stmt.args)):
+            arg = self.emitter.def_var(f"args{i}", f"{self.rhs(stmt.args[i])} & {(1 << len(stmt.args[i])) - 1}")
+            args.append(arg)
+        self.emitter.append(f"print(\"{stmt.text}\" % tuple([{','.join(args)}]))")
+
     @classmethod
     def compile(cls, state, stmt):
         output_indexes = [state.get_signal(signal) for signal in stmt._lhs_signals()]

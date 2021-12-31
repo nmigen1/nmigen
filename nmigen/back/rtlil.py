@@ -751,6 +751,9 @@ class _StatementCompiler(xfrm.StatementVisitor):
     on_Assume = on_property
     on_Cover  = on_property
 
+    def on_Display(self, stmt):
+        pass
+
     def on_Switch(self, stmt):
         self._check_rhs(stmt.test)
 

@@ -19,7 +19,7 @@ __all__ = [
     "UserValue", "ValueCastable",
     "Sample", "Past", "Stable", "Rose", "Fell", "Initial",
     "Statement", "Switch",
-    "Property", "Assign", "Assert", "Assume", "Cover",
+    "Property", "Assign", "Assert", "Assume", "Cover", "Display",
     "ValueKey", "ValueDict", "ValueSet", "SignalKey", "SignalDict", "SignalSet",
 ]
 
@@ -1457,7 +1457,6 @@ class Property(Statement, MustUse):
     def __repr__(self):
         return "({} {!r})".format(self._kind, self.test)
 
-
 @final
 class Assert(Property):
     _kind = "assert"
@@ -1471,6 +1470,29 @@ class Assume(Property):
 @final
 class Cover(Property):
     _kind = "cover"
+
+@final
+class Display(Statement):
+    _MustUse__warning = UnusedProperty
+
+    def __init__(self, text, *args):
+        super().__init__(src_loc_at=0)
+        self.text = text
+        self.args = args
+        self.test = Signal()
+        self._check = Signal(reset_less=True)
+        self._check.src_loc = self.src_loc
+        self._en = Signal(reset_less=True)
+        self._en.src_loc = self.src_loc
+
+    def _lhs_signals(self):
+        return SignalSet((self._en, self._check))
+
+    def _rhs_signals(self):
+        return self.test._rhs_signals()
+
+    def __repr__(self):
+        return "(display {!r})".format(self.text)
 
 
 # @final
