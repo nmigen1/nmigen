@@ -31,6 +31,7 @@ setup(
         "Jinja2~=2.11", # for nmigen.build
     ],
     extras_require={
+        "remote-build": ["paramiko~=2.7"],
     },
     packages=find_packages(exclude=["*.test*"]),
     entry_points={
