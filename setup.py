@@ -30,6 +30,8 @@ setup(
         "pyvcd~=0.2.0", # for nmigen.pysim
         "Jinja2~=2.11", # for nmigen.build
     ],
+    extras_require={
+    },
     packages=find_packages(exclude=["*.test*"]),
     entry_points={
         "console_scripts": [
