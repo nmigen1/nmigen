@@ -27,39 +27,40 @@ class FFSynchronizer(Elaboratable):
     o_domain : str
         Name of output clock domain.
     reset : int
-        Reset value of the flip-flops. On FPGAs, even if ``reset_less`` is True,
+        Reset value of the flip-flops. On FPGAs, even if ``reset_less`` is ``True``,
         the :class:`FFSynchronizer` is still set to this value during initialization.
     reset_less : bool
         If ``True`` (the default), this :class:`FFSynchronizer` is unaffected by ``o_domain``
-        reset. See "Note on Reset" below.
-    stages : int
+        reset. See the note below for details.
+    stages : int, >=2
         Number of synchronization stages between input and output. The lowest safe number is 2,
         with higher numbers reducing MTBF further, at the cost of increased latency.
     max_input_delay : None or float
         Maximum delay from the input signal's clock to the first synchronization stage, in seconds.
         If specified and the platform does not support it, elaboration will fail.
 
-    Platform override
-    -----------------
+
+    .. note::
+
+        :class:`FFSynchronizer` is non-resettable by default. Usually this is the safest option;
+        on FPGAs the :class:`FFSynchronizer` will still be initialized to its ``reset`` value when
+        the FPGA loads its configuration.
+
+        However, in designs where the value of the :class:`FFSynchronizer` must be valid immediately
+        after reset, consider setting ``reset_less`` to ``False`` if any of the following is true:
+
+        - You are targeting an ASIC, or an FPGA that does not allow arbitrary initial flip-flop states;
+        - Your design features warm (non-power-on) resets of ``o_domain``, so the one-time
+          initialization at power on is insufficient;
+        - Your design features a sequenced reset, and the :class:`FFSynchronizer` must maintain
+          its reset value until ``o_domain`` reset specifically is deasserted.
+
+        :class:`FFSynchronizer` is reset by the ``o_domain`` reset only.
+
+    Platform overrides
+    ------------------
     Define the ``get_ff_sync`` platform method to override the implementation of
     :class:`FFSynchronizer`, e.g. to instantiate library cells directly.
-
-    Note on Reset
-    -------------
-    :class:`FFSynchronizer` is non-resettable by default. Usually this is the safest option;
-    on FPGAs the :class:`FFSynchronizer` will still be initialized to its ``reset`` value when
-    the FPGA loads its configuration.
-
-    However, in designs where the value of the :class:`FFSynchronizer` must be valid immediately
-    after reset, consider setting ``reset_less`` to False if any of the following is true:
-
-    - You are targeting an ASIC, or an FPGA that does not allow arbitrary initial flip-flop states;
-    - Your design features warm (non-power-on) resets of ``o_domain``, so the one-time
-      initialization at power on is insufficient;
-    - Your design features a sequenced reset, and the :class:`FFSynchronizer` must maintain
-      its reset value until ``o_domain`` reset specifically is deasserted.
-
-    :class:`FFSynchronizer` is reset by the ``o_domain`` reset only.
     """
     def __init__(self, i, o, *, o_domain="sync", reset=0, reset_less=True, stages=2,
                  max_input_delay=None):
@@ -115,6 +116,14 @@ class AsyncFFSynchronizer(Elaboratable):
         with higher numbers reducing MTBF further, at the cost of increased deassertion latency.
     async_edge : str
         The edge of the input signal which causes the output to be set. Must be one of "pos" or "neg".
+    max_input_delay : None or float
+        Maximum delay from the input signal's clock to the first synchronization stage, in seconds.
+        If specified and the platform does not support it, elaboration will fail.
+
+    Platform overrides
+    ------------------
+    Define the ``get_async_ff_sync`` platform method to override the implementation of
+    :class:`AsyncFFSynchronizer`, e.g. to instantiate library cells directly.
     """
     def __init__(self, i, o, *, o_domain="sync", stages=2, async_edge="pos", max_input_delay=None):
         _check_stages(stages)
