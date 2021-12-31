@@ -23,9 +23,10 @@ setup(
     #long_description="""TODO""",
     license="BSD",
     python_requires="~=3.6",
-    setup_requires=["setuptools_scm"],
+    setup_requires=["setuptools", "setuptools_scm"],
     install_requires=[
-        "setuptools",
+        "importlib_metadata; python_version<'3.8'",  # for __version__ and nmigen._yosys
+         "importlib_resources; python_version<'3.9'", # for nmigen._yosys
         "pyvcd~=0.2.0", # for nmigen.pysim
         "Jinja2~=2.11", # for nmigen.build
     ],
