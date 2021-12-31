@@ -32,7 +32,7 @@ Other nMigen libraries are built on FHDL and provide various tools and
 logic cores. nMigen also contains a simulator that allows test benches
 to be written in Python.
 
-See the [doc/](doc/) folder for more technical information.
+See the [docs/](docs/) folder for more technical information.
 
 nMigen 1.0 is based on [Migen][], a hardware description language
 developed by [M-Labs][]. Although Migen works very well in production, its
