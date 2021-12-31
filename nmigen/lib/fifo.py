@@ -2,9 +2,9 @@
 
 from .. import *
 from ..asserts import *
-from .._utils import log2_int, deprecated
-from .coding import GrayEncoder
-from .cdc import FFSynchronizer
+from .._utils import log2_int
+from .coding import GrayEncoder, GrayDecoder
+from .cdc import FFSynchronizer, AsyncFFSynchronizer
 
 
 __all__ = ["FIFOInterface", "SyncFIFO", "SyncFIFOBuffered", "AsyncFIFO", "AsyncFIFOBuffered"]
@@ -32,6 +32,8 @@ class FIFOInterface:
         a new entry.
     w_en : in
         Write strobe. Latches ``w_data`` into the queue. Does nothing if ``w_rdy`` is not asserted.
+    w_level : out
+        Number of unread entries.
     {w_attributes}
     r_data : out, width
         Output data. {r_data_valid}
@@ -41,6 +43,8 @@ class FIFOInterface:
     r_en : in
         Read strobe. Makes the next entry (if any) available on ``r_data`` at the next cycle.
         Does nothing if ``r_rdy`` is not asserted.
+    r_level : out
+        Number of unread entries.
     {r_attributes}
     """
 
@@ -74,10 +78,12 @@ class FIFOInterface:
         self.w_data = Signal(width, reset_less=True)
         self.w_rdy  = Signal() # writable; not full
         self.w_en   = Signal()
+        self.w_level = Signal(range(depth + 1))
 
         self.r_data = Signal(width, reset_less=True)
         self.r_rdy  = Signal() # readable; not empty
         self.r_en   = Signal()
+        self.r_level = Signal(range(depth + 1))
 
 
 def _incr(signal, modulo):
@@ -106,10 +112,7 @@ class SyncFIFO(Elaboratable, FIFOInterface):
     cycle after ``r_rdy`` and ``r_en`` have been asserted.
     """.strip(),
     attributes="",
-    r_attributes="""
-    level : out
-        Number of unread entries.
-    """.strip(),
+    r_attributes="",
     w_attributes="")
 
     def __init__(self, *, width, depth, fwft=True):
@@ -128,7 +131,9 @@ class SyncFIFO(Elaboratable, FIFOInterface):
 
         m.d.comb += [
             self.w_rdy.eq(self.level != self.depth),
-            self.r_rdy.eq(self.level != 0)
+            self.r_rdy.eq(self.level != 0),
+            self.w_level.eq(self.level),
+            self.r_level.eq(self.level),
         ]
 
         do_read  = self.r_rdy & self.r_en
@@ -144,7 +149,7 @@ class SyncFIFO(Elaboratable, FIFOInterface):
         m.d.comb += [
             w_port.addr.eq(produce),
             w_port.data.eq(self.w_data),
-            w_port.en.eq(self.w_en & self.w_rdy)
+            w_port.en.eq(self.w_en & self.w_rdy),
         ]
         with m.If(do_write):
             m.d.sync += produce.eq(_incr(produce, self.depth))
@@ -248,7 +253,11 @@ class SyncFIFOBuffered(Elaboratable, FIFOInterface):
         with m.Elif(self.r_en):
             m.d.sync += self.r_rdy.eq(0)
 
-        m.d.comb += self.level.eq(fifo.level + self.r_rdy)
+        m.d.comb += [
+            self.level.eq(fifo.level + self.r_rdy),
+            self.w_level.eq(self.level),
+            self.r_level.eq(self.level),
+        ]
 
         return m
 
@@ -260,6 +269,10 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
 
     Read and write interfaces are accessed from different clock domains, which can be set when
     constructing the FIFO.
+
+    :class:`AsyncFIFO` can be reset from the write clock domain. When the write domain reset is
+    asserted, the FIFO becomes empty. When the read domain is reset, data remains in the FIFO - the
+    read domain logic should correctly handle this case.
 
     :class:`AsyncFIFO` only supports power of 2 depths. Unless ``exact_depth`` is specified,
     the ``depth`` parameter is rounded up to the next power of 2.
@@ -275,7 +288,11 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
         Always set.
     """.strip(),
     r_data_valid="Valid if ``r_rdy`` is asserted.",
-    r_attributes="",
+    r_attributes="""
+    r_rst : Signal, out
+        Asserted while the FIFO is being reset by the write-domain reset (for at least one
+        read-domain clock cycle).
+    """.strip(),
     w_attributes="")
 
     def __init__(self, *, width, depth, r_domain="read", w_domain="write", exact_depth=False):
@@ -283,7 +300,7 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
             try:
                 depth_bits = log2_int(depth, need_pow2=exact_depth)
                 depth = 1 << depth_bits
-            except ValueError as e:
+            except ValueError:
                 raise ValueError("AsyncFIFO only supports depths that are powers of 2; requested "
                                  "exact depth {} is not"
                                  .format(depth)) from None
@@ -291,6 +308,7 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
             depth_bits = 0
         super().__init__(width=width, depth=depth, fwft=True)
 
+        self.r_rst = Signal()
         self._r_domain = r_domain
         self._w_domain = w_domain
         self._ctr_bits = depth_bits + 1
@@ -317,7 +335,8 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
         m.d.comb += produce_w_nxt.eq(produce_w_bin + do_write)
         m.d[self._w_domain] += produce_w_bin.eq(produce_w_nxt)
 
-        consume_r_bin = Signal(self._ctr_bits)
+        # Note: Both read-domain counters must be reset_less (see comments below)
+        consume_r_bin = Signal(self._ctr_bits, reset_less=True)
         consume_r_nxt = Signal(self._ctr_bits)
         m.d.comb += consume_r_nxt.eq(consume_r_bin + do_read)
         m.d[self._r_domain] += consume_r_bin.eq(consume_r_nxt)
@@ -331,7 +350,7 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
         m.d.comb += produce_enc.i.eq(produce_w_nxt),
         m.d[self._w_domain] += produce_w_gry.eq(produce_enc.o)
 
-        consume_r_gry = Signal(self._ctr_bits)
+        consume_r_gry = Signal(self._ctr_bits, reset_less=True)
         consume_w_gry = Signal(self._ctr_bits)
         consume_enc = m.submodules.consume_enc = \
             GrayEncoder(self._ctr_bits)
@@ -339,6 +358,18 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
             FFSynchronizer(consume_r_gry, consume_w_gry, o_domain=self._w_domain)
         m.d.comb += consume_enc.i.eq(consume_r_nxt)
         m.d[self._r_domain] += consume_r_gry.eq(consume_enc.o)
+
+        consume_w_bin = Signal(self._ctr_bits)
+        consume_dec = m.submodules.consume_dec = \
+            GrayDecoder(self._ctr_bits)
+        m.d.comb += consume_dec.i.eq(consume_w_gry),
+        m.d[self._w_domain] += consume_w_bin.eq(consume_dec.o)
+
+        produce_r_bin = Signal(self._ctr_bits)
+        produce_dec = m.submodules.produce_dec = \
+            GrayDecoder(self._ctr_bits)
+        m.d.comb += produce_dec.i.eq(produce_r_gry),
+        m.d.comb += produce_r_bin.eq(produce_dec.o)
 
         w_full  = Signal()
         r_empty = Signal()
@@ -348,6 +379,9 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
                       (produce_w_gry[:-2] == consume_w_gry[:-2])),
             r_empty.eq(consume_r_gry == produce_r_gry),
         ]
+
+        m.d[self._w_domain] += self.w_level.eq((produce_w_bin - consume_w_bin))
+        m.d.comb += self.r_level.eq((produce_r_bin - consume_r_bin))
 
         storage = Memory(width=self.width, depth=self.depth)
         w_port  = m.submodules.w_port = storage.write_port(domain=self._w_domain)
@@ -365,6 +399,37 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
             r_port.en.eq(1),
             self.r_rdy.eq(~r_empty),
         ]
+
+        # Reset handling to maintain FIFO and CDC invariants in the presence of a write-domain
+        # reset.
+        # There is a CDC hazard associated with resetting an async FIFO - Gray code counters which
+        # are reset to 0 violate their Gray code invariant. One way to handle this is to ensure
+        # that both sides of the FIFO are asynchronously reset by the same signal. We adopt a
+        # slight variation on this approach - reset control rests entirely with the write domain.
+        # The write domain's reset signal is used to asynchronously reset the read domain's
+        # counters and force the FIFO to be empty when the write domain's reset is asserted.
+        # This requires the two read domain counters to be marked as "reset_less", as they are
+        # reset through another mechanism. See https://github.com/nmigen/nmigen/issues/181 for the
+        # full discussion.
+        w_rst = ResetSignal(domain=self._w_domain, allow_reset_less=True)
+        r_rst = Signal()
+
+        # Async-set-sync-release synchronizer avoids CDC hazards
+        rst_cdc = m.submodules.rst_cdc = \
+            AsyncFFSynchronizer(w_rst, r_rst, o_domain=self._r_domain)
+
+        # Decode Gray code counter synchronized from write domain to overwrite binary
+        # counter in read domain.
+        rst_dec = m.submodules.rst_dec = \
+            GrayDecoder(self._ctr_bits)
+        m.d.comb += rst_dec.i.eq(produce_r_gry)
+        with m.If(r_rst):
+            m.d.comb += r_empty.eq(1)
+            m.d[self._r_domain] += consume_r_gry.eq(produce_r_gry)
+            m.d[self._r_domain] += consume_r_bin.eq(rst_dec.o)
+            m.d[self._r_domain] += self.r_rst.eq(1)
+        with m.Else():
+            m.d[self._r_domain] += self.r_rst.eq(0)
 
         if platform == "formal":
             with m.If(Initial()):
@@ -403,7 +468,11 @@ class AsyncFIFOBuffered(Elaboratable, FIFOInterface):
         Always set.
     """.strip(),
     r_data_valid="Valid if ``r_rdy`` is asserted.",
-    r_attributes="",
+    r_attributes="""
+    r_rst : Signal, out
+        Asserted while the FIFO is being reset by the write-domain reset (for at least one
+        read-domain clock cycle).
+    """.strip(),
     w_attributes="")
 
     def __init__(self, *, width, depth, r_domain="read", w_domain="write", exact_depth=False):
@@ -411,12 +480,13 @@ class AsyncFIFOBuffered(Elaboratable, FIFOInterface):
             try:
                 depth_bits = log2_int(max(0, depth - 1), need_pow2=exact_depth)
                 depth = (1 << depth_bits) + 1
-            except ValueError as e:
+            except ValueError:
                 raise ValueError("AsyncFIFOBuffered only supports depths that are one higher "
                                  "than powers of 2; requested exact depth {} is not"
                                  .format(depth)) from None
         super().__init__(width=width, depth=depth, fwft=True)
 
+        self.r_rst = Signal()
         self._r_domain = r_domain
         self._w_domain = w_domain
 
@@ -438,10 +508,19 @@ class AsyncFIFOBuffered(Elaboratable, FIFOInterface):
             fifo.w_en.eq(self.w_en),
         ]
 
+        r_consume_buffered = Signal()
+        m.d.comb += r_consume_buffered.eq((self.r_rdy - self.r_en) & self.r_rdy)
+        m.d[self._r_domain] += self.r_level.eq(fifo.r_level + r_consume_buffered)
+
+        w_consume_buffered = Signal()
+        m.submodules.consume_buffered_cdc = FFSynchronizer(r_consume_buffered, w_consume_buffered, o_domain=self._w_domain, stages=4)
+        m.d.comb += self.w_level.eq(fifo.w_level + w_consume_buffered)
+
         with m.If(self.r_en | ~self.r_rdy):
             m.d[self._r_domain] += [
                 self.r_data.eq(fifo.r_data),
                 self.r_rdy.eq(fifo.r_rdy),
+                self.r_rst.eq(fifo.r_rst),
             ]
             m.d.comb += [
                 fifo.r_en.eq(1)

@@ -63,6 +63,11 @@ class Platform(ResourceManager, metaclass=ABCMeta):
         else:
             self.extra_files[filename] = content
 
+    def iter_files(self, *suffixes):
+        for filename in self.extra_files:
+            if filename.endswith(suffixes):
+                yield filename
+
     @property
     def _toolchain_env_var(self):
         return f"NMIGEN_ENV_{self.toolchain}"
@@ -71,7 +76,19 @@ class Platform(ResourceManager, metaclass=ABCMeta):
               build_dir="build", do_build=True,
               program_opts=None, do_program=False,
               **kwargs):
-        if self._toolchain_env_var not in os.environ:
+        # The following code performs a best-effort check for presence of required tools upfront,
+        # before performing any build actions, to provide a better diagnostic. It does not handle
+        # several corner cases:
+        #  1. `require_tool` does not source toolchain environment scripts, so if such a script
+        #     is used, the check is skipped, and `execute_local()` may fail;
+        #  2. if the design is not built (do_build=False), most of the tools are not required and
+        #     in fact might not be available if the design will be built manually with a different
+        #     environment script specified, or on a different machine; however, Yosys is required
+        #     by virtually every platform anyway, to provide debug Verilog output, and `prepare()`
+        #     may fail.
+        # This is OK because even if `require_tool` succeeds, the toolchain might be broken anyway.
+        # The check only serves to catch common errors earlier.
+        if do_build and self._toolchain_env_var not in os.environ:
             for tool in self.required_tools:
                 require_tool(tool)
 
@@ -136,16 +153,15 @@ class Platform(ResourceManager, metaclass=ABCMeta):
             if pin.dir == "io":
                 add_pin_fragment(pin, self.get_input_output(pin, port, attrs, invert))
 
-        for pin, p_port, n_port, attrs, invert in self.iter_differential_pins():
+        for pin, port, attrs, invert in self.iter_differential_pins():
             if pin.dir == "i":
-                add_pin_fragment(pin, self.get_diff_input(pin, p_port, n_port, attrs, invert))
+                add_pin_fragment(pin, self.get_diff_input(pin, port, attrs, invert))
             if pin.dir == "o":
-                add_pin_fragment(pin, self.get_diff_output(pin, p_port, n_port, attrs, invert))
+                add_pin_fragment(pin, self.get_diff_output(pin, port, attrs, invert))
             if pin.dir == "oe":
-                add_pin_fragment(pin, self.get_diff_tristate(pin, p_port, n_port, attrs, invert))
+                add_pin_fragment(pin, self.get_diff_tristate(pin, port, attrs, invert))
             if pin.dir == "io":
-                add_pin_fragment(pin,
-                    self.get_diff_input_output(pin, p_port, n_port, attrs, invert))
+                add_pin_fragment(pin, self.get_diff_input_output(pin, port, attrs, invert))
 
         fragment._propagate_ports(ports=self.iter_ports(), all_undef_as_ports=False)
         return self.toolchain_prepare(fragment, name, **kwargs)
@@ -166,7 +182,7 @@ class Platform(ResourceManager, metaclass=ABCMeta):
                                   .format(type(self).__name__))
 
     def _check_feature(self, feature, pin, attrs, valid_xdrs, valid_attrs):
-        if not valid_xdrs:
+        if len(valid_xdrs) == 0:
             raise NotImplementedError("Platform '{}' does not support {}"
                                       .format(type(self).__name__, feature))
         elif pin.xdr not in valid_xdrs:
@@ -227,19 +243,19 @@ class Platform(ResourceManager, metaclass=ABCMeta):
         m.d.comb += pin.i.eq(self._invert_if(invert, port))
         return m
 
-    def get_diff_input(self, pin, p_port, n_port, attrs, invert):
+    def get_diff_input(self, pin, port, attrs, invert):
         self._check_feature("differential input", pin, attrs,
                             valid_xdrs=(), valid_attrs=None)
 
-    def get_diff_output(self, pin, p_port, n_port, attrs, invert):
+    def get_diff_output(self, pin, port, attrs, invert):
         self._check_feature("differential output", pin, attrs,
                             valid_xdrs=(), valid_attrs=None)
 
-    def get_diff_tristate(self, pin, p_port, n_port, attrs, invert):
+    def get_diff_tristate(self, pin, port, attrs, invert):
         self._check_feature("differential tristate", pin, attrs,
                             valid_xdrs=(), valid_attrs=None)
 
-    def get_diff_input_output(self, pin, p_port, n_port, attrs, invert):
+    def get_diff_input_output(self, pin, port, attrs, invert):
         self._check_feature("differential input/output", pin, attrs,
                             valid_xdrs=(), valid_attrs=None)
 
@@ -264,6 +280,15 @@ class TemplatedPlatform(Platform):
         """,
     }
 
+    def iter_clock_constraints(self):
+        for net_signal, port_signal, frequency in super().iter_clock_constraints():
+            # Skip any clock constraints placed on signals that are never used in the design.
+            # Otherwise, it will cause a crash in the vendor platform if it supports clock
+            # constraints on non-port nets.
+            if net_signal not in self._name_map:
+                continue
+            yield net_signal, port_signal, frequency
+
     def toolchain_prepare(self, fragment, name, **kwargs):
         # Restrict the name of the design to a strict alphanumeric character set. Platforms will
         # interpolate the name of the design in many different contexts: filesystem paths, Python
@@ -280,7 +305,7 @@ class TemplatedPlatform(Platform):
         # and to incorporate the nMigen version into generated code.
         autogenerated = "Automatically generated by nMigen {}. Do not edit.".format(__version__)
 
-        rtlil_text, name_map = rtlil.convert_fragment(fragment, name=name)
+        rtlil_text, self._name_map = rtlil.convert_fragment(fragment, name=name)
 
         def emit_rtlil():
             return rtlil_text
@@ -354,16 +379,30 @@ class TemplatedPlatform(Platform):
                 return " ".join(opts)
 
         def hierarchy(signal, separator):
-            return separator.join(name_map[signal][1:])
+            return separator.join(self._name_map[signal][1:])
+
+        def ascii_escape(string):
+            def escape_one(match):
+                if match.group(1) is None:
+                    return match.group(2)
+                else:
+                    return "_{:02x}_".format(ord(match.group(1)[0]))
+            return "".join(escape_one(m) for m in re.finditer(r"([^A-Za-z0-9_])|(.)", string))
+
+        def tcl_escape(string):
+            return "{" + re.sub(r"([{}\\])", r"\\\1", string) + "}"
+
+        def tcl_quote(string):
+            return '"' + re.sub(r"([$[\\])", r"\\\1", string) + '"'
 
         def verbose(arg):
-            if "NMIGEN_verbose" in os.environ:
+            if get_override("verbose"):
                 return arg
             else:
                 return jinja2.Undefined(name="quiet")
 
         def quiet(arg):
-            if "NMIGEN_verbose" in os.environ:
+            if get_override("verbose"):
                 return jinja2.Undefined(name="quiet")
             else:
                 return arg
@@ -371,9 +410,13 @@ class TemplatedPlatform(Platform):
         def render(source, origin, syntax=None):
             try:
                 source   = textwrap.dedent(source).strip()
-                compiled = jinja2.Template(source, trim_blocks=True, lstrip_blocks=True)
+                compiled = jinja2.Template(source,
+                    trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
                 compiled.environment.filters["options"] = options
                 compiled.environment.filters["hierarchy"] = hierarchy
+                compiled.environment.filters["ascii_escape"] = ascii_escape
+                compiled.environment.filters["tcl_escape"] = tcl_escape
+                compiled.environment.filters["tcl_quote"] = tcl_quote
             except jinja2.TemplateSyntaxError as e:
                 e.args = ("{} (at {}:{})".format(e.message, origin, e.lineno),)
                 raise
@@ -399,6 +442,3 @@ class TemplatedPlatform(Platform):
         for filename, content in self.extra_files.items():
             plan.add_file(filename, content)
         return plan
-
-    def iter_extra_files(self, *endswith):
-        return (f for f in self.extra_files if f.endswith(endswith))

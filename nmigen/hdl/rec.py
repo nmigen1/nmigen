@@ -1,9 +1,9 @@
 from enum import Enum
 from collections import OrderedDict
-from functools import reduce
+from functools import reduce, wraps
 
 from .. import tracer
-from .._utils import union, deprecated
+from .._utils import union
 from .ast import *
 
 
@@ -47,8 +47,9 @@ class Layout:
                                 .format(field))
             if not isinstance(shape, Layout):
                 try:
-                    shape = Shape.cast(shape, src_loc_at=1 + src_loc_at)
-                except Exception as error:
+                    # Check provided shape by calling Shape.cast and checking for exception
+                    Shape.cast(shape, src_loc_at=1 + src_loc_at)
+                except Exception:
                     raise TypeError("Field {!r} has invalid shape: should be castable to Shape "
                                     "or a list of fields of a nested record"
                                     .format(field))
@@ -74,9 +75,17 @@ class Layout:
     def __eq__(self, other):
         return self.fields == other.fields
 
+    def __repr__(self):
+        field_reprs = []
+        for name, shape, dir in self:
+            if dir == DIR_NONE:
+                field_reprs.append("({!r}, {!r})".format(name, shape))
+            else:
+                field_reprs.append("({!r}, {!r}, Direction.{})".format(name, shape, dir.name))
+        return "Layout([{}])".format(", ".join(field_reprs))
 
-# Unlike most Values, Record *can* be subclassed.
-class Record(Value):
+
+class Record(ValueCastable):
     @staticmethod
     def like(other, *, name=None, name_suffix=None, src_loc_at=0):
         if name is not None:
@@ -123,7 +132,7 @@ class Record(Value):
                 if isinstance(field_shape, Layout):
                     assert isinstance(field, Record) and field_shape == field.layout
                 else:
-                    assert isinstance(field, Signal) and field_shape == field.shape()
+                    assert isinstance(field, Signal) and Shape.cast(field_shape) == field.shape()
                 self.fields[field_name] = field
             else:
                 if isinstance(field_shape, Layout):
@@ -154,10 +163,22 @@ class Record(Value):
                 if field_name in item
             })
         else:
-            return super().__getitem__(item)
+            try:
+                return Value.__getitem__(self, item)
+            except KeyError:
+                if self.name is None:
+                    reference = "Unnamed record"
+                else:
+                    reference = "Record '{}'".format(self.name)
+                raise AttributeError("{} does not have a field '{}'. Did you mean one of: {}?"
+                                     .format(reference, item, ", ".join(self.fields))) from None
 
-    def shape(self):
-        return Shape(sum(len(f) for f in self.fields.values()))
+    @ValueCastable.lowermethod
+    def as_value(self):
+        return Cat(self.fields.values())
+
+    def __len__(self):
+        return len(self.as_value())
 
     def _lhs_signals(self):
         return union((f._lhs_signals() for f in self.fields.values()), start=SignalSet())
@@ -176,6 +197,9 @@ class Record(Value):
         if name is None:
             name = "<unnamed>"
         return "(rec {} {})".format(name, " ".join(fields))
+
+    def shape(self):
+        return self.as_value().shape()
 
     def connect(self, *subordinates, include=None, exclude=None):
         def rec_name(record):
@@ -226,3 +250,29 @@ class Record(Value):
                     stmts += [item.eq(reduce(lambda a, b: a | b, subord_items))]
 
         return stmts
+
+def _valueproxy(name):
+    value_func = getattr(Value, name)
+    @wraps(value_func)
+    def _wrapper(self, *args, **kwargs):
+        return value_func(Value.cast(self), *args, **kwargs)
+    return _wrapper
+
+for name in [
+        "__bool__",
+        "__invert__", "__neg__",
+        "__add__", "__radd__", "__sub__", "__rsub__",
+        "__mul__", "__rmul__",
+        "__mod__", "__rmod__", "__floordiv__", "__rfloordiv__",
+        "__lshift__", "__rlshift__", "__rshift__", "__rrshift__",
+        "__and__", "__rand__", "__xor__", "__rxor__", "__or__", "__ror__",
+        "__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__",
+        "__abs__", "__len__",
+        "as_unsigned", "as_signed", "bool", "any", "all", "xor", "implies",
+        "bit_select", "word_select", "matches",
+        "shift_left", "shift_right", "rotate_left", "rotate_right", "eq"
+        ]:
+    setattr(Record, name, _valueproxy(name))
+
+del _valueproxy
+del name

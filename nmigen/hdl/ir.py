@@ -1,9 +1,7 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from collections import defaultdict, OrderedDict
 from functools import reduce
 import warnings
-import traceback
-import sys
 
 from .._utils import *
 from .._unused import *
@@ -532,6 +530,12 @@ class Fragment:
         if ports is None:
             fragment._propagate_ports(ports=(), all_undef_as_ports=True)
         else:
+            if not isinstance(ports, tuple) and not isinstance(ports, list):
+                msg = "`ports` must be either a list or a tuple, not {!r}"\
+                        .format(ports)
+                if isinstance(ports, Value):
+                    msg += " (did you mean `ports=(<signal>,)`, rather than `ports=<signal>`?)"
+                raise TypeError(msg)
             mapped_ports = []
             # Lower late bound signals like ClockSignal() to ports.
             port_lowerer = DomainLowerer(fragment.domains)
@@ -568,7 +572,7 @@ class Instance(Fragment):
                 self.named_ports[name] = (Value.cast(value), kind)
             else:
                 raise NameError("Instance argument {!r} should be a tuple (kind, name, value) "
-                                "where kind is one of \"p\", \"i\", \"o\", or \"io\""
+                                "where kind is one of \"a\", \"p\", \"i\", \"o\", or \"io\""
                                 .format((kind, name, value)))
 
         for kw, arg in kwargs.items():
@@ -584,5 +588,5 @@ class Instance(Fragment):
                 self.named_ports[kw[3:]] = (Value.cast(arg), "io")
             else:
                 raise NameError("Instance keyword argument {}={!r} does not start with one of "
-                                "\"p_\", \"i_\", \"o_\", or \"io_\""
+                                "\"a_\", \"p_\", \"i_\", \"o_\", or \"io_\""
                                 .format(kw, arg))

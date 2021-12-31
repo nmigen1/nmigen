@@ -6,12 +6,18 @@ import textwrap
 import traceback
 import unittest
 import warnings
-from contextlib import contextmanager
 
 from ..hdl.ast import *
 from ..hdl.ir import *
 from ..back import rtlil
 from .._toolchain import require_tool
+
+
+warnings.warn("nmigen.test.utils is an internal utility module that has several design flaws "
+              "and was never intended as a public API; it will be removed in nmigen 0.4. "
+              "if you are using FHDLTestCase, include its implementation in your codebase. "
+              "see also nmigen/nmigen#487",
+              DeprecationWarning, stacklevel=2)
 
 
 __all__ = ["FHDLTestCase"]

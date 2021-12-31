@@ -1,7 +1,8 @@
 import argparse
 
 from .hdl.ir import Fragment
-from .back import rtlil, verilog, pysim
+from .back import rtlil, cxxrtl, verilog
+from .sim import Simulator
 
 
 __all__ = ["main"]
@@ -14,11 +15,10 @@ def main_parser(parser=None):
     p_action = parser.add_subparsers(dest="action")
 
     p_generate = p_action.add_parser("generate",
-        help="generate RTLIL or Verilog from the design")
+        help="generate RTLIL, Verilog or CXXRTL from the design")
     p_generate.add_argument("-t", "--type", dest="generate_type",
-        metavar="LANGUAGE", choices=["il", "v"],
-        default="v",
-        help="generate LANGUAGE (il for RTLIL, v for Verilog; default: %(default)s)")
+        metavar="LANGUAGE", choices=["il", "cc", "v"],
+        help="generate LANGUAGE (il for RTLIL, v for Verilog, cc for CXXRTL; default: file extension of FILE, if given)")
     p_generate.add_argument("generate_file",
         metavar="FILE", type=argparse.FileType("w"), nargs="?",
         help="write generated code to FILE")
@@ -46,14 +46,18 @@ def main_runner(parser, args, design, platform=None, name="top", ports=()):
         fragment = Fragment.get(design, platform)
         generate_type = args.generate_type
         if generate_type is None and args.generate_file:
-            if args.generate_file.name.endswith(".v"):
-                generate_type = "v"
             if args.generate_file.name.endswith(".il"):
                 generate_type = "il"
+            if args.generate_file.name.endswith(".cc"):
+                generate_type = "cc"
+            if args.generate_file.name.endswith(".v"):
+                generate_type = "v"
         if generate_type is None:
-            parser.error("specify file type explicitly with -t")
+            parser.error("Unable to auto-detect language, specify explicitly with -t/--type")
         if generate_type == "il":
             output = rtlil.convert(fragment, name=name, ports=ports)
+        if generate_type == "cc":
+            output = cxxrtl.convert(fragment, name=name, ports=ports)
         if generate_type == "v":
             output = verilog.convert(fragment, name=name, ports=ports)
         if args.generate_file:
@@ -63,7 +67,7 @@ def main_runner(parser, args, design, platform=None, name="top", ports=()):
 
     if args.action == "simulate":
         fragment = Fragment.get(design, platform)
-        sim = pysim.Simulator(fragment)
+        sim = Simulator(fragment)
         sim.add_clock(args.sync_period)
         with sim.write_vcd(vcd_file=args.vcd_file, gtkw_file=args.gtkw_file, traces=ports):
             sim.run_until(args.sync_period * args.sync_clocks, run_passive=True)

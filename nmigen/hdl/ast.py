@@ -1,10 +1,10 @@
 from abc import ABCMeta, abstractmethod
-import traceback
 import warnings
-import typing
+import functools
 from collections import OrderedDict
 from collections.abc import Iterable, MutableMapping, MutableSet, MutableSequence
 from enum import Enum
+from itertools import chain
 
 from .. import tracer
 from .._utils import *
@@ -16,7 +16,7 @@ __all__ = [
     "Value", "Const", "C", "AnyConst", "AnySeq", "Operator", "Mux", "Part", "Slice", "Cat", "Repl",
     "Array", "ArrayProxy",
     "Signal", "ClockSignal", "ResetSignal",
-    "UserValue",
+    "UserValue", "ValueCastable",
     "Sample", "Past", "Stable", "Rose", "Fell", "Initial",
     "Statement", "Switch",
     "Property", "Assign", "Assert", "Assume", "Cover",
@@ -32,7 +32,7 @@ class DUID:
         DUID.__next_uid += 1
 
 
-class Shape(typing.NamedTuple):
+class Shape:
     """Bit width and signedness of a value.
 
     A ``Shape`` can be constructed using:
@@ -55,8 +55,15 @@ class Shape(typing.NamedTuple):
     signed : bool
         If ``False``, the value is unsigned. If ``True``, the value is signed two's complement.
     """
-    width:  int  = 1
-    signed: bool = False
+    def __init__(self, width=1, signed=False):
+        if not isinstance(width, int) or width < 0:
+            raise TypeError("Width must be a non-negative integer, not {!r}"
+                            .format(width))
+        self.width = width
+        self.signed = signed
+
+    def __iter__(self):
+        return iter((self.width, self.signed))
 
     @staticmethod
     def cast(obj, *, src_loc_at=0):
@@ -89,13 +96,26 @@ class Shape(typing.NamedTuple):
             return Shape(width, signed)
         raise TypeError("Object {!r} cannot be used as value shape".format(obj))
 
+    def __repr__(self):
+        if self.signed:
+            return "signed({})".format(self.width)
+        else:
+            return "unsigned({})".format(self.width)
 
-# TODO: use dataclasses instead of this hack
-def _Shape___init__(self, width=1, signed=False):
-    if not isinstance(width, int) or width < 0:
-        raise TypeError("Width must be a non-negative integer, not {!r}"
-                        .format(width))
-Shape.__init__ = _Shape___init__
+    def __eq__(self, other):
+        if isinstance(other, tuple) and len(other) == 2:
+            width, signed = other
+            if isinstance(width, int) and isinstance(signed, bool):
+                return self.width == width and self.signed == signed
+            else:
+                raise TypeError("Shapes may be compared with other Shapes and (int, bool) tuples, "
+                        "not {!r}"
+                        .format(other))
+        if not isinstance(other, Shape):
+            raise TypeError("Shapes may be compared with other Shapes and (int, bool) tuples, "
+                    "not {!r}"
+                    .format(other))
+        return self.width == other.width and self.signed == other.signed
 
 
 def unsigned(width):
@@ -122,6 +142,8 @@ class Value(metaclass=ABCMeta):
             return Const(obj)
         if isinstance(obj, Enum):
             return Const(obj.value, Shape.cast(type(obj)))
+        if isinstance(obj, ValueCastable):
+            return obj.as_value()
         raise TypeError("Object {!r} cannot be converted to an nMigen value".format(obj))
 
     def __init__(self, *, src_loc_at=0):
@@ -129,7 +151,7 @@ class Value(metaclass=ABCMeta):
         self.src_loc = tracer.get_src_loc(1 + src_loc_at)
 
     def __bool__(self):
-        raise TypeError("Attempted to convert nMigen value to boolean")
+        raise TypeError("Attempted to convert nMigen value to Python boolean")
 
     def __invert__(self):
         return Operator("~", [self])
@@ -178,7 +200,7 @@ class Value(metaclass=ABCMeta):
             # Neither Python nor HDLs implement shifts by negative values; prohibit any shifts
             # by a signed value to make sure the shift amount can always be interpreted as
             # an unsigned value.
-            raise NotImplementedError("Shift by a signed value is not supported")
+            raise TypeError("Shift amount must be unsigned")
     def __lshift__(self, other):
         other = Value.cast(other)
         other.__check_shamt()
@@ -220,6 +242,13 @@ class Value(metaclass=ABCMeta):
     def __ge__(self, other):
         return Operator(">=", [self, other])
 
+    def __abs__(self):
+        width, signed = self.shape()
+        if signed:
+            return Mux(self >= 0, self, -self)
+        else:
+            return self
+
     def __len__(self):
         return self.shape().width
 
@@ -227,7 +256,7 @@ class Value(metaclass=ABCMeta):
         n = len(self)
         if isinstance(key, int):
             if key not in range(-n, n):
-                raise IndexError("Cannot index {} bits into {}-bit value".format(key, n))
+                raise IndexError(f"Index {key} is out of bounds for a {n}-bit value")
             if key < 0:
                 key += n
             return Slice(self, key, key + 1)
@@ -317,7 +346,7 @@ class Value(metaclass=ABCMeta):
 
         Parameters
         ----------
-        offset : Value, in
+        offset : Value, int
             Index of first selected bit.
         width : int
             Number of selected bits.
@@ -340,7 +369,7 @@ class Value(metaclass=ABCMeta):
 
         Parameters
         ----------
-        offset : Value, in
+        offset : Value, int
             Index of first selected word.
         width : int
             Number of selected bits.
@@ -409,6 +438,86 @@ class Value(metaclass=ABCMeta):
             return matches[0]
         else:
             return Cat(*matches).any()
+
+    def shift_left(self, amount):
+        """Shift left by constant amount.
+
+        Parameters
+        ----------
+        amount : int
+            Amount to shift by.
+
+        Returns
+        -------
+        Value, out
+            If the amount is positive, the input shifted left. Otherwise, the input shifted right.
+        """
+        if not isinstance(amount, int):
+            raise TypeError("Shift amount must be an integer, not {!r}".format(amount))
+        if amount < 0:
+            return self.shift_right(-amount)
+        if self.shape().signed:
+            return Cat(Const(0, amount), self).as_signed()
+        else:
+            return Cat(Const(0, amount), self) # unsigned
+
+    def shift_right(self, amount):
+        """Shift right by constant amount.
+
+        Parameters
+        ----------
+        amount : int
+            Amount to shift by.
+
+        Returns
+        -------
+        Value, out
+            If the amount is positive, the input shifted right. Otherwise, the input shifted left.
+        """
+        if not isinstance(amount, int):
+            raise TypeError("Shift amount must be an integer, not {!r}".format(amount))
+        if amount < 0:
+            return self.shift_left(-amount)
+        if self.shape().signed:
+            return self[amount:].as_signed()
+        else:
+            return self[amount:] # unsigned
+
+    def rotate_left(self, amount):
+        """Rotate left by constant amount.
+
+        Parameters
+        ----------
+        amount : int
+            Amount to rotate by.
+
+        Returns
+        -------
+        Value, out
+            If the amount is positive, the input rotated left. Otherwise, the input rotated right.
+        """
+        if not isinstance(amount, int):
+            raise TypeError("Rotate amount must be an integer, not {!r}".format(amount))
+        amount %= len(self)
+        return Cat(self[-amount:], self[:-amount]) # meow :3
+
+    def rotate_right(self, amount):
+        """Rotate right by constant amount.
+
+        Parameters
+        ----------
+        amount : int
+            Amount to rotate by.
+
+        Returns
+        -------
+        Value, out
+            If the amount is positive, the input rotated right. Otherwise, the input rotated right.
+        """
+        if not isinstance(amount, int):
+            raise TypeError("Rotate amount must be an integer, not {!r}".format(amount))
+        amount %= len(self)
+        return Cat(self[amount:], self[:amount])
 
     def eq(self, value):
         """Assignment.
@@ -500,7 +609,7 @@ class Const(Value):
         return Shape(self.width, self.signed)
 
     def _rhs_signals(self):
-        return ValueSet()
+        return SignalSet()
 
     def _as_const(self):
         return self.value
@@ -524,7 +633,7 @@ class AnyValue(Value, DUID):
         return Shape(self.width, self.signed)
 
     def _rhs_signals(self):
-        return ValueSet()
+        return SignalSet()
 
 
 @final
@@ -591,17 +700,11 @@ class Operator(Value):
             if self.operator in ("&", "^", "|"):
                 return _bitwise_binary_shape(*op_shapes)
             if self.operator == "<<":
-                if b_signed:
-                    extra = 2 ** (b_width - 1) - 1
-                else:
-                    extra = 2 ** (b_width)     - 1
-                return Shape(a_width + extra, a_signed)
+                assert not b_signed
+                return Shape(a_width + 2 ** b_width - 1, a_signed)
             if self.operator == ">>":
-                if b_signed:
-                    extra = 2 ** (b_width - 1)
-                else:
-                    extra = 0
-                return Shape(a_width + extra, a_signed)
+                assert not b_signed
+                return Shape(a_width, a_signed)
         elif len(op_shapes) == 3:
             if self.operator == "m":
                 s_shape, a_shape, b_shape = op_shapes
@@ -632,9 +735,6 @@ def Mux(sel, val1, val0):
     Value, out
         Output ``Value``. If ``sel`` is asserted, the Mux returns ``val1``, else ``val0``.
     """
-    sel = Value.cast(sel)
-    if len(sel) != 1:
-        sel = sel.bool()
     return Operator("m", [sel, val1, val0])
 
 
@@ -660,8 +760,8 @@ class Slice(Value):
 
         super().__init__(src_loc_at=src_loc_at)
         self.value = Value.cast(value)
-        self.start = start
-        self.stop  = stop
+        self.start = int(start)
+        self.stop  = int(stop)
 
     def shape(self):
         return Shape(self.stop - self.start)
@@ -737,10 +837,10 @@ class Cat(Value):
         return Shape(sum(len(part) for part in self.parts))
 
     def _lhs_signals(self):
-        return union((part._lhs_signals() for part in self.parts), start=ValueSet())
+        return union((part._lhs_signals() for part in self.parts), start=SignalSet())
 
     def _rhs_signals(self):
-        return union((part._rhs_signals() for part in self.parts), start=ValueSet())
+        return union((part._rhs_signals() for part in self.parts), start=SignalSet())
 
     def _as_const(self):
         value = 0
@@ -873,8 +973,10 @@ class Signal(Value, DUID):
                 except ValueError:
                     return str(value)
             self.decoder = enum_decoder
+            self._enum_class = decoder
         else:
             self.decoder = decoder
+            self._enum_class = None
 
     # Not a @classmethod because nmigen.compat requires it.
     @staticmethod
@@ -903,10 +1005,10 @@ class Signal(Value, DUID):
         return Shape(self.width, self.signed)
 
     def _lhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def _rhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def __repr__(self):
         return "(sig {})".format(self.name)
@@ -937,7 +1039,7 @@ class ClockSignal(Value):
         return Shape(1)
 
     def _lhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def _rhs_signals(self):
         raise NotImplementedError("ClockSignal must be lowered to a concrete signal") # :nocov:
@@ -974,7 +1076,7 @@ class ResetSignal(Value):
         return Shape(1)
 
     def _lhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def _rhs_signals(self):
         raise NotImplementedError("ResetSignal must be lowered to a concrete signal") # :nocov:
@@ -1088,24 +1190,43 @@ class ArrayProxy(Value):
         return (Value.cast(elem) for elem in self.elems)
 
     def shape(self):
-        width, signed = 0, False
+        unsigned_width = signed_width = 0
+        has_unsigned = has_signed = False
         for elem_width, elem_signed in (elem.shape() for elem in self._iter_as_values()):
-            width  = max(width, elem_width + elem_signed)
-            signed = max(signed, elem_signed)
-        return Shape(width, signed)
+            if elem_signed:
+                has_signed = True
+                signed_width = max(signed_width, elem_width)
+            else:
+                has_unsigned = True
+                unsigned_width = max(unsigned_width, elem_width)
+        # The shape of the proxy must be such that it preserves the mathematical value of the array
+        # elements. I.e., shape-wise, an array proxy must be identical to an equivalent mux tree.
+        # To ensure this holds, if the array contains both signed and unsigned values, make sure
+        # that every unsigned value is zero-extended by at least one bit.
+        if has_signed and has_unsigned and unsigned_width >= signed_width:
+            # Array contains both signed and unsigned values, and at least one of the unsigned
+            # values won't be zero-extended otherwise.
+            return signed(unsigned_width + 1)
+        else:
+            # Array contains values of the same signedness, or else all of the unsigned values
+            # are zero-extended.
+            return Shape(max(unsigned_width, signed_width), has_signed)
 
     def _lhs_signals(self):
-        signals = union((elem._lhs_signals() for elem in self._iter_as_values()), start=ValueSet())
+        signals = union((elem._lhs_signals() for elem in self._iter_as_values()),
+                        start=SignalSet())
         return signals
 
     def _rhs_signals(self):
-        signals = union((elem._rhs_signals() for elem in self._iter_as_values()), start=ValueSet())
+        signals = union((elem._rhs_signals() for elem in self._iter_as_values()),
+                        start=SignalSet())
         return self.index._rhs_signals() | signals
 
     def __repr__(self):
         return "(proxy (array [{}]) {!r})".format(", ".join(map(repr, self.elems)), self.index)
 
 
+# TODO(nmigen-0.4): remove
 class UserValue(Value):
     """Value with custom lowering.
 
@@ -1126,6 +1247,7 @@ class UserValue(Value):
         * Indexing or iterating through individual bits;
         * Adding an assignment to the value to a ``Module`` using ``m.d.<domain> +=``.
     """
+    @deprecated("instead of `UserValue`, use `ValueCastable`", stacklevel=3)
     def __init__(self, *, src_loc_at=0):
         super().__init__(src_loc_at=1 + src_loc_at)
         self.__lowered = None
@@ -1137,7 +1259,10 @@ class UserValue(Value):
 
     def _lazy_lower(self):
         if self.__lowered is None:
-            self.__lowered = Value.cast(self.lower())
+            lowered = self.lower()
+            if isinstance(lowered, UserValue):
+                lowered = lowered._lazy_lower()
+            self.__lowered = Value.cast(lowered)
         return self.__lowered
 
     def shape(self):
@@ -1148,6 +1273,52 @@ class UserValue(Value):
 
     def _rhs_signals(self):
         return self._lazy_lower()._rhs_signals()
+
+
+class ValueCastable:
+    """Base class for classes which can be cast to Values.
+
+    A ``ValueCastable`` can be cast to ``Value``, meaning its precise representation does not have
+    to be immediately known. This is useful in certain metaprogramming scenarios. Instead of
+    providing fixed semantics upfront, it is kept abstract for as long as possible, only being
+    cast to a concrete nMigen value when required.
+
+    Note that it is necessary to ensure that nMigen's view of representation of all values stays
+    internally consistent. The class deriving from ``ValueCastable`` must decorate the ``as_value``
+    method with the ``lowermethod`` decorator, which ensures that all calls to ``as_value`` return
+    the same ``Value`` representation. If the class deriving from ``ValueCastable`` is mutable,
+    it is up to the user to ensure that it is not mutated in a way that changes its representation
+    after the first call to ``as_value``.
+    """
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls)
+        if not hasattr(self, "as_value"):
+            raise TypeError(f"Class '{cls.__name__}' deriving from `ValueCastable` must override "
+                            "the `as_value` method")
+
+        if not hasattr(self.as_value, "_ValueCastable__memoized"):
+            raise TypeError(f"Class '{cls.__name__}' deriving from `ValueCastable` must decorate "
+                            "the `as_value` method with the `ValueCastable.lowermethod` decorator")
+        return self
+
+    @staticmethod
+    def lowermethod(func):
+        """Decorator to memoize lowering methods.
+
+        Ensures the decorated method is called only once, with subsequent method calls returning the
+        object returned by the first first method call.
+
+        This decorator is required to decorate the ``as_value`` method of ``ValueCastable`` subclasses.
+        This is to ensure that nMigen's view of representation of all values stays internally
+        consistent.
+        """
+        @functools.wraps(func)
+        def wrapper_memoized(self, *args, **kwargs):
+            if not hasattr(self, "_ValueCastable__lowered_to"):
+                self.__lowered_to = func(self, *args, **kwargs)
+            return self.__lowered_to
+        wrapper_memoized.__memoized = True
+        return wrapper_memoized
 
 
 @final
@@ -1177,7 +1348,7 @@ class Sample(Value):
         return self.value.shape()
 
     def _rhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def __repr__(self):
         return "(sample {!r} @ {}[{}])".format(
@@ -1213,7 +1384,7 @@ class Initial(Value):
         return Shape(1)
 
     def _rhs_signals(self):
-        return ValueSet((self,))
+        return SignalSet((self,))
 
     def __repr__(self):
         return "(initial)"
@@ -1231,7 +1402,7 @@ class Statement:
     @staticmethod
     def cast(obj):
         if isinstance(obj, Iterable):
-            return _StatementList(sum((Statement.cast(e) for e in obj), []))
+            return _StatementList(list(chain.from_iterable(map(Statement.cast, obj))))
         else:
             if isinstance(obj, Statement):
                 return _StatementList([obj])
@@ -1276,7 +1447,7 @@ class Property(Statement, MustUse):
             self._en.src_loc = self.src_loc
 
     def _lhs_signals(self):
-        return ValueSet((self._en, self._check))
+        return SignalSet((self._en, self._check))
 
     def _rhs_signals(self):
         return self.test._rhs_signals()
@@ -1324,13 +1495,14 @@ class Switch(Statement):
                 keys = (keys,)
             # Map: 2 -> "0010"; "0010" -> "0010"
             new_keys = ()
+            key_mask = (1 << len(self.test)) - 1
             for key in keys:
                 if isinstance(key, str):
                     key = "".join(key.split()) # remove whitespace
                 elif isinstance(key, int):
-                    key = format(key, "b").rjust(len(self.test), "0")
+                    key = format(key & key_mask, "b").rjust(len(self.test), "0")
                 elif isinstance(key, Enum):
-                    key = format(key.value, "b").rjust(len(self.test), "0")
+                    key = format(key.value & key_mask, "b").rjust(len(self.test), "0")
                 else:
                     raise TypeError("Object {!r} cannot be used as a switch key"
                                     .format(key))
@@ -1344,12 +1516,12 @@ class Switch(Statement):
 
     def _lhs_signals(self):
         signals = union((s._lhs_signals() for ss in self.cases.values() for s in ss),
-                        start=ValueSet())
+                        start=SignalSet())
         return signals
 
     def _rhs_signals(self):
         signals = union((s._rhs_signals() for ss in self.cases.values() for s in ss),
-                        start=ValueSet())
+                        start=SignalSet())
         return self.test._rhs_signals() | signals
 
     def __repr__(self):

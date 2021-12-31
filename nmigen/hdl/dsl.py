@@ -1,11 +1,10 @@
-from collections import OrderedDict, namedtuple
-from collections.abc import Iterable
+from collections import OrderedDict
 from contextlib import contextmanager, _GeneratorContextManager
 from functools import wraps
 from enum import Enum
 import warnings
 
-from .._utils import flatten, bits_for, deprecated
+from .._utils import flatten, bits_for
 from .. import tracer
 from .ast import *
 from .ir import *
@@ -174,9 +173,9 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         self._ctrl_stack   = []
 
         self._driving      = SignalDict()
-        self._named_submodules   = {}
-        self._anon_submodules = []
-        self._domains      = []
+        self._named_submodules = {}
+        self._anon_submodules  = []
+        self._domains      = {}
         self._generated    = {}
 
     def _check_context(self, construct, context):
@@ -214,10 +213,9 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         width, signed = cond.shape()
         if signed:
             warnings.warn("Signed values in If/Elif conditions usually result from inverting "
-                          "Python booleans with ~, which leads to unexpected results: ~True is "
-                          "-2, which is truthful. Replace `~flag` with `not flag`. (If this is "
-                          "a false positive, silence this warning with "
-                          "`m.If(x)` → `m.If(x.bool())`.)",
+                          "Python booleans with ~, which leads to unexpected results. "
+                          "Replace `~flag` with `not flag`. (If this is a false positive, "
+                          "silence this warning with `m.If(x)` → `m.If(x.bool())`.)",
                           SyntaxWarning, stacklevel=4)
         return cond
 
@@ -227,6 +225,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         cond = self._check_signed_cond(cond)
         src_loc = tracer.get_src_loc(src_loc_at=1)
         if_data = self._set_ctrl("If", {
+            "depth":    self.domain._depth,
             "tests":    [],
             "bodies":   [],
             "src_loc":  src_loc,
@@ -250,7 +249,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         cond = self._check_signed_cond(cond)
         src_loc = tracer.get_src_loc(src_loc_at=1)
         if_data = self._get_ctrl("If")
-        if if_data is None:
+        if if_data is None or if_data["depth"] != self.domain._depth:
             raise SyntaxError("Elif without preceding If")
         try:
             _outer_case, self._statements = self._statements, []
@@ -269,7 +268,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         self._check_context("Else", context=None)
         src_loc = tracer.get_src_loc(src_loc_at=1)
         if_data = self._get_ctrl("If")
-        if if_data is None:
+        if if_data is None or if_data["depth"] != self.domain._depth:
             raise SyntaxError("Else without preceding If/Elif")
         try:
             _outer_case, self._statements = self._statements, []
@@ -523,7 +522,9 @@ class Module(_ModuleBuilderRoot, Elaboratable):
             raise AttributeError("No submodule named '{}' exists".format(name))
 
     def _add_domain(self, cd):
-        self._domains.append(cd)
+        if cd.name in self._domains:
+            raise NameError("Clock domain named '{}' already exists".format(cd.name))
+        self._domains[cd.name] = cd
 
     def _flush(self):
         while self._ctrl_stack:
@@ -541,6 +542,6 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         fragment.add_statements(statements)
         for signal, domain in self._driving.items():
             fragment.add_driver(signal, domain)
-        fragment.add_domains(self._domains)
+        fragment.add_domains(self._domains.values())
         fragment.generated.update(self._generated)
         return fragment

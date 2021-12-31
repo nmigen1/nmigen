@@ -1,4 +1,4 @@
-# nMigen
+# nMigen(R) 1.0
 
 ## A refreshed Python toolbox for building complex digital hardware
 
@@ -12,7 +12,7 @@ Other nMigen libraries are built on FHDL and provide various tools and logic cor
 
 See the [doc/](doc/) folder for more technical information.
 
-nMigen is based on [Migen][], a hardware description language developed by [M-Labs][]. Although Migen works very well in production, its design could be improved in many fundamental ways, and nMigen reimplements Migen concepts from scratch to do so. nMigen also provides an extensive [compatibility layer](#migration-from-migen) that makes it possible to build and simulate most Migen designs unmodified, as well as integrate modules written for Migen and nMigen.
+nMigen 1.0 is based on [Migen][], a hardware description language developed by [M-Labs][]. Although Migen works very well in production, its design could be improved in many fundamental ways, and nMigen reimplements Migen concepts from scratch to do so. nMigen also provides an extensive [compatibility layer](#migration-from-migen) that makes it possible to build and simulate most Migen designs unmodified, as well as integrate modules written for Migen and nMigen.
 
 The development of nMigen has been supported by [M-Labs][] and [LambdaConcept][].
 
@@ -29,8 +29,12 @@ nMigen is *not* a "Python-to-FPGA" conventional high level synthesis (HLS) tool.
 
 nMigen requires Python 3.6 (or newer), [Yosys][] 0.9 (or newer), as well as a device-specific toolchain.
 
-    pip install git+https://github.com/m-labs/nmigen.git
-    pip install git+https://github.com/m-labs/nmigen-boards.git
+First, install Yosys, either using your system package manager, or [from source][yosyssrc]. Then, install nMigen and pinouts for many common FPGA developer boards:
+
+    pip install git+https://gitlab.com/nmigen/nmigen.git
+    pip install git+https://gitlab.com/nmigen/nmigen-boards.git
+
+[yosyssrc]: https://github.com/yosysHQ/yosys/#setup
 
 ### Introduction
 
@@ -42,12 +46,14 @@ nMigen can be used to target any FPGA or ASIC process that accepts behavioral Ve
 
   * Lattice iCE40 (toolchains: **Yosys+nextpnr**, LSE-iCECube2, Synplify-iCECube2);
   * Lattice MachXO2 (toolchains: Diamond);
+  * Lattice MachXO3L (toolchains: Diamond);
   * Lattice ECP5 (toolchains: **Yosys+nextpnr**, Diamond);
   * Xilinx Spartan 3A (toolchains: ISE);
   * Xilinx Spartan 6 (toolchains: ISE);
   * Xilinx 7-series (toolchains: Vivado);
   * Xilinx UltraScale (toolchains: Vivado);
-  * Intel (toolchains: Quartus).
+  * Intel (toolchains: Quartus);
+  * Quicklogic EOS S3 (toolchains: **Yosys+VPR**).
 
 FOSS toolchains are listed in **bold**.
 
@@ -65,7 +71,7 @@ Once your design passes verification with nMigen, you can migrate it to the nMig
 
 ### Community
 
-nMigen discussions take place on the M-Labs IRC channel, [#m-labs at freenode.net](https://webchat.freenode.net/?channels=m-labs). Feel free to join to ask questions about using nMigen or discuss ongoing development of nMigen and its related projects.
+nMigen has a dedicated IRC channel, [#nmigen at oftc.net](https://webchat.oftc.net/?channels=nmigen). Feel free to join to ask questions about using nMigen or discuss ongoing development of nMigen and its related projects.
 
 ### License
 
@@ -77,8 +83,13 @@ Even though we do not require you to do so, these things are awesome, so please 
   * cite nMigen in publications related to research it has helped
   * send us feedback and suggestions for improvements
   * send us bug reports when something goes wrong
-  * send us the modifications and improvements you have done to nMigen as pull requests on GitHub
+  * send us the modifications and improvements you have done to nMigen as pull requests on GitLab
 
 See LICENSE file for full copyright and license info.
 
   "Electricity! It's like magic!"
+
+### Trademark
+
+nMigen is a [Registered Trademark](https://uspto.report/TM/88980893) of
+M-Labs.

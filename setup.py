@@ -23,13 +23,17 @@ setup(
     #long_description="""TODO""",
     license="BSD",
     python_requires="~=3.6",
-    setup_requires=["setuptools_scm"],
+    setup_requires=["wheel", "setuptools", "setuptools_scm"],
     install_requires=[
-        "setuptools",
-        "pyvcd~=0.1.4", # for nmigen.pysim
-        "Jinja2", # for nmigen.build
+        "importlib_metadata; python_version<'3.8'",  # for __version__ and nmigen._yosys
+        "importlib_resources; python_version<'3.9'", # for nmigen._yosys
+        "pyvcd~=0.2.2", # for nmigen.pysim
+        "Jinja2~=2.11", # for nmigen.build
     ],
-    packages=find_packages(),
+    extras_require={
+        "remote-build": ["paramiko~=2.7"],
+    },
+    packages=find_packages(exclude=["tests*"]),
     entry_points={
         "console_scripts": [
             "nmigen-rpc = nmigen.rpc:main",
@@ -37,7 +41,7 @@ setup(
     },
     project_urls={
         #"Documentation": "https://nmigen.readthedocs.io/",
-        "Source Code": "https://github.com/m-labs/nmigen",
-        "Bug Tracker": "https://github.com/m-labs/nmigen/issues",
+        "Source Code": "https://gitlab.com/nmigen/nmigen",
+        "Bug Tracker": "https://gitlab.com/nmigen/nmigen/issues",
     },
 )
