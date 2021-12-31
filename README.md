@@ -84,7 +84,8 @@ behavioral Verilog-2001 as input. It also offers extended support for
 many FPGA families, providing toolchain integration, abstractions for
 device-specific primitives, and more. Specifically:
 
-  * Lattice iCE40 (toolchains: **Yosys+nextpnr**, LSE-iCECube2, Synplify-iCECube2);
+  * Lattice iCE40 (toolchains: **Yosys+nextpnr**, LSE-iCECube2,
+    Synplify-iCECube2);
   * Lattice MachXO2 (toolchains: Diamond);
   * Lattice MachXO3L (toolchains: Diamond);
   * Lattice ECP5 (toolchains: **Yosys+nextpnr**, Diamond);
