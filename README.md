@@ -14,13 +14,16 @@ See the [doc/](doc/) folder for more technical information.
 
 nMigen 1.0 is based on [Migen][], a hardware description language developed by [M-Labs][]. Although Migen works very well in production, its design could be improved in many fundamental ways, and nMigen reimplements Migen concepts from scratch to do so. nMigen also provides an extensive [compatibility layer](#migration-from-migen) that makes it possible to build and simulate most Migen designs unmodified, as well as integrate modules written for Migen and nMigen.
 
-The development of nMigen has been supported by [SymbioticEDA][], [LambdaConcept][] and [M-Labs][].
+The development of nMigen has been supported by [M-Labs][] and [LambdaConcept][].
 
 [migen]: https://m-labs.hk/migen
 [yosys]: http://www.clifford.at/yosys/
-[symbioticeda]: https://www.symbioticeda.com/
+[m-labs]: https://m-labs.hk
 [lambdaconcept]: http://lambdaconcept.com/
-[m-labs]: http://m-labs.hk
+
+### HLS?
+
+nMigen is *not* a "Python-to-FPGA" conventional high level synthesis (HLS) tool. It will *not* take a Python program as input and generate a hardware implementation of it. In nMigen, the Python program is executed by a regular Python interpreter, and it emits explicit statements in the FHDL domain-specific language.  Writing a conventional HLS tool that uses nMigen as an internal component might be a good idea, on the other hand :)
 
 ### Installation
 
@@ -76,6 +79,7 @@ nMigen is released under the very permissive two-clause BSD license. Under the t
 
 Even though we do not require you to do so, these things are awesome, so please do them if possible:
   * tell us that you are using nMigen
+  * put the [nMigen logo](doc/nmigen_logo.svg) on the page of a product using it, with a link to https://nmigen.org
   * cite nMigen in publications related to research it has helped
   * send us feedback and suggestions for improvements
   * send us bug reports when something goes wrong

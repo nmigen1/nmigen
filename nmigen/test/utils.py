@@ -34,14 +34,40 @@ class FHDLTestCase(unittest.TestCase):
             return repr_str.strip()
         self.assertEqual(prepare_repr(repr(obj)), prepare_repr(repr_str))
 
-    def assertFormal(self, spec, mode="bmc", depth=1):
+    @contextmanager
+    def assertRaises(self, exception, msg=None):
+        with super().assertRaises(exception) as cm:
+            yield
+        if msg is not None:
+            # WTF? unittest.assertRaises is completely broken.
+            self.assertEqual(str(cm.exception), msg)
+
+    @contextmanager
+    def assertRaisesRegex(self, exception, regex=None):
+        with super().assertRaises(exception) as cm:
+            yield
+        if regex is not None:
+            # unittest.assertRaisesRegex also seems broken...
+            self.assertRegex(str(cm.exception), regex)
+
+    @contextmanager
+    def assertWarns(self, category, msg=None):
+        with warnings.catch_warnings(record=True) as warns:
+            yield
+        self.assertEqual(len(warns), 1)
+        self.assertEqual(warns[0].category, category)
+        if msg is not None:
+            self.assertEqual(str(warns[0].message), msg)
+
+    def assertFormal(self, spec, mode="bmc", depth=1, engine="smtbmc", spec_name=None):
         caller, *_ = traceback.extract_stack(limit=2)
         spec_root, _ = os.path.splitext(caller.filename)
         spec_dir = os.path.dirname(spec_root)
-        spec_name = "{}_{}".format(
-            os.path.basename(spec_root).replace("test_", "spec_"),
-            caller.name.replace("test_", "")
-        )
+        if spec_name is None:
+            spec_name = "{}_{}".format(
+                os.path.basename(spec_root).replace("test_", "spec_"),
+                caller.name.replace("test_", "")
+            )
 
         # The sby -f switch seems not fully functional when sby is reading from stdin.
         if os.path.exists(os.path.join(spec_dir, spec_name)):
@@ -61,7 +87,7 @@ class FHDLTestCase(unittest.TestCase):
         wait on
 
         [engines]
-        smtbmc
+        {engine}
 
         [script]
         read_ilang top.il
@@ -73,6 +99,7 @@ class FHDLTestCase(unittest.TestCase):
         """).format(
             mode=mode,
             depth=depth,
+            engine=engine,
             script=script,
             rtlil=rtlil.convert(Fragment.get(spec, platform="formal"))
         )
