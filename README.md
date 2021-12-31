@@ -144,7 +144,8 @@ so please do them if possible:
   * send us feedback and suggestions for improvements
   * send us bug reports when something goes wrong
   * send us the modifications and improvements you have done to nMigen
-    as pull requests on GitLab
+    as pull requests on GitLab. git format-patch is also accepted: ping
+    us on the IRC channel
 
 See LICENSE file for full copyright and license info.
 
