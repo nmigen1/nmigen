@@ -54,10 +54,12 @@ The development of nMigen has been supported by [M-Labs][] and
 
 nMigen is *not* a "Python-to-FPGA" conventional high level synthesis
 (HLS) tool. It will *not* take a Python program as input and generate a
-hardware implementation of it. In nMigen, the Python program is executed
-by a regular Python interpreter, and it emits explicit statements in the
-FHDL domain-specific language.  Writing a conventional HLS tool that uses
-nMigen as an internal component might be a good idea, on the other hand :)
+hardware implementation of it. If you prefer this style of HLS, you may
+wish to try [MyHDL](https://myhdl.org). In nMigen, the Python program is
+executed by a regular Python interpreter, and it emits explicit statements
+in the FHDL domain-specific language.  Writing a conventional HLS tool,
+similar to MyHDL, that uses nMigen as an internal component might be a
+good idea, on the other hand :)
 
 ### Installation
 
