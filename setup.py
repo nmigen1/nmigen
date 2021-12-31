@@ -41,7 +41,7 @@ setup(
     },
     project_urls={
         #"Documentation": "https://nmigen.readthedocs.io/",
-        "Source Code": "https://github.com/nmigen/nmigen",
-        "Bug Tracker": "https://github.com/nmigen/nmigen/issues",
+        "Source Code": "https://gitlab.com/nmigen/nmigen",
+        "Bug Tracker": "https://gitlab.com/nmigen/nmigen/issues",
     },
 )

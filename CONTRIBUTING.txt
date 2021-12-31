@@ -1,8 +1,8 @@
 CONTRIBUTIONS and CODE REVIEWS
 
 We love contributions from the community. Please send pull requests and raise
-issues! All code submissions require review. We use GitHub pull requests for
-this purpose.
+issues! All code submissions require review. We use GitLab pull requests for
+this purpose and also accept git format-patch patches if that is preferred.
 
 
 COPYRIGHTS and LICENSE

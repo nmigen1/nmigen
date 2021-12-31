@@ -28,8 +28,8 @@ nMigen requires Python 3.6 (or newer), [Yosys][] 0.9 (or newer), as well as a de
 
 First, install Yosys, either using your system package manager, or [from source][yosyssrc]. Then, install nMigen and pinouts for many common FPGA developer boards:
 
-    pip install git+https://github.com/nmigen/nmigen.git
-    pip install git+https://github.com/nmigen/nmigen-boards.git
+    pip install git+https://gitlab.com/nmigen/nmigen.git
+    pip install git+https://gitlab.com/nmigen/nmigen-boards.git
 
 [yosyssrc]: https://github.com/yosysHQ/yosys/#setup
 
@@ -79,7 +79,7 @@ Even though we do not require you to do so, these things are awesome, so please 
   * cite nMigen in publications related to research it has helped
   * send us feedback and suggestions for improvements
   * send us bug reports when something goes wrong
-  * send us the modifications and improvements you have done to nMigen as pull requests on GitHub
+  * send us the modifications and improvements you have done to nMigen as pull requests on GitLab
 
 See LICENSE file for full copyright and license info.
 
