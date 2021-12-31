@@ -33,7 +33,7 @@ setup(
     extras_require={
         "remote-build": ["paramiko~=2.7"],
     },
-    packages=find_packages(exclude=["*.test*"]),
+    packages=find_packages(),
     entry_points={
         "console_scripts": [
             "nmigen-rpc = nmigen.rpc:main",
