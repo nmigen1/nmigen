@@ -139,13 +139,13 @@ closed-source proprietary designs.
 Even though we do not require you to do so, these things are awesome,
 so please do them if possible:
   * tell us that you are using nMigen
-  * put the [nMigen logo](doc/nmigen_logo.svg) on the page of a product
+  * put the [nMigen logo](docs/_images/nmigen_logo.svg) on the page of a product
     using it, with a link to https://nmigen.org
   * cite nMigen in publications related to research it has helped
   * send us feedback and suggestions for improvements
   * send us bug reports when something goes wrong
   * send us the modifications and improvements you have done to nMigen
-    as pull requests on GitLab. git format-patch is also accepted: ping
+    as pull requests on GitLab. git format-patch is also perfectly fine: ping
     us on the IRC channel
 
 See LICENSE file for full copyright and license info.
