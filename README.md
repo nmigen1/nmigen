@@ -1,4 +1,4 @@
-# nMigen
+# nMigen(R) 1.0
 
 ## A refreshed Python toolbox for building complex digital hardware
 
@@ -12,7 +12,7 @@ Other nMigen libraries are built on FHDL and provide various tools and logic cor
 
 See the [doc/](doc/) folder for more technical information.
 
-nMigen is based on [Migen][], a hardware description language developed by [M-Labs][]. Although Migen works very well in production, its design could be improved in many fundamental ways, and nMigen reimplements Migen concepts from scratch to do so. nMigen also provides an extensive [compatibility layer](#migration-from-migen) that makes it possible to build and simulate most Migen designs unmodified, as well as integrate modules written for Migen and nMigen.
+nMigen 1.0 is based on [Migen][], a hardware description language developed by [M-Labs][]. Although Migen works very well in production, its design could be improved in many fundamental ways, and nMigen reimplements Migen concepts from scratch to do so. nMigen also provides an extensive [compatibility layer](#migration-from-migen) that makes it possible to build and simulate most Migen designs unmodified, as well as integrate modules written for Migen and nMigen.
 
 The development of nMigen has been supported by [SymbioticEDA][], [LambdaConcept][] and [M-Labs][].
 
@@ -84,3 +84,8 @@ Even though we do not require you to do so, these things are awesome, so please 
 See LICENSE file for full copyright and license info.
 
   "Electricity! It's like magic!"
+
+### Trademark
+
+nMigen is a [Registered Trademark](https://uspto.report/TM/88980893) of
+M-Labs.
