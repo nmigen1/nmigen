@@ -46,7 +46,7 @@ The development of nMigen has been supported by [M-Labs][] and
 [LambdaConcept][].
 
 [migen]: https://m-labs.hk/migen
-[yosys]: http://www.clifford.at/yosys/
+[yosys]: https://yosyshq.net/yosys/
 [m-labs]: https://m-labs.hk
 [lambdaconcept]: http://lambdaconcept.com/
 
