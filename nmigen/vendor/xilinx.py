@@ -337,7 +337,8 @@ class XilinxPlatform(TemplatedPlatform):
     # Symbiflow templates
 
     _symbiflow_part_map = {
-        "xc7a35ticsg324-1L": "xc7a35tcsg324-1", # Arty-A7
+        "xc7a35ticsg324-1L": "xc7a35tcsg324-1", # Arty-A7-35
+        "xc7a100ticsg324-1L": "xc7a100tcsg324-1", # Arty-A7-100
     }
 
     _symbiflow_required_tools = [
