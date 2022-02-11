@@ -480,7 +480,7 @@ class XilinxPlatform(TemplatedPlatform):
         """,
         r"""
         {{invoke_tool("yosys")}}
-            -p "synth_xilinx -flatten -abc9 -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
+            -p "synth_xilinx -flatten -nocarry -abc9 -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
         """,
         r"""
         {{invoke_tool("nextpnr-xilinx")}}
