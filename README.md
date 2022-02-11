@@ -134,6 +134,13 @@ oftc.net](https://webchat.oftc.net/?channels=nmigen). Feel free to join
 to ask questions about using nMigen or discuss ongoing development of
 nMigen and its related projects.
 
+### Tutorials, examples, and Talks
+
+Here are some links to tutorial, examples
+
+* [Learning nmigen](https://libre-soc.org/docs/learning_nmigen/)
+* [FOSDEM 2022 nmigen HDL](https://fosdem.org/2022/schedule/event/nmigen/)
+
 ### License
 
 nMigen is released under the very permissive two-clause BSD license. Under
