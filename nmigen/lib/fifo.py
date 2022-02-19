@@ -106,6 +106,9 @@ class SyncFIFO(Elaboratable, FIFOInterface):
         First-word fallthrough. If set, when the queue is empty and an entry is written into it,
         that entry becomes available on the output on the same clock cycle. Otherwise, it is
         necessary to assert ``r_en`` for ``r_data`` to become valid.
+    mem_attrs : dictionary
+        Dictionary of synthesis attributes passed through to the Memory
+        used in the FIFO
     """.strip(),
     r_data_valid="For FWFT queues, valid if ``r_rdy`` is asserted. "
                  "For non-FWFT queues, valid on the next cycle after ``r_rdy`` and ``r_en`` have been asserted.",
@@ -116,10 +119,11 @@ class SyncFIFO(Elaboratable, FIFOInterface):
     r_attributes="",
     w_attributes="")
 
-    def __init__(self, *, width, depth, fwft=True):
+    def __init__(self, *, width, depth, fwft=True, mem_attrs=None):
         super().__init__(width=width, depth=depth, fwft=fwft)
 
         self.level = Signal(range(depth + 1))
+        self.mem_attrs = mem_attrs
 
     def elaborate(self, platform):
         m = Module()
@@ -140,7 +144,8 @@ class SyncFIFO(Elaboratable, FIFOInterface):
         do_read  = self.r_rdy & self.r_en
         do_write = self.w_rdy & self.w_en
 
-        storage = Memory(width=self.width, depth=self.depth)
+        storage = Memory(width=self.width, depth=self.depth,
+                         attrs=self.mem_attrs)
         w_port  = m.submodules.w_port = storage.write_port()
         r_port  = m.submodules.r_port = storage.read_port(
             domain="comb" if self.fwft else "sync", transparent=self.fwft)
