@@ -225,10 +225,11 @@ class SyncFIFOBuffered(Elaboratable, FIFOInterface):
     r_attributes="",
     w_attributes="")
 
-    def __init__(self, *, width, depth):
+    def __init__(self, *, width, depth, mem_attrs=None):
         super().__init__(width=width, depth=depth, fwft=True)
 
         self.level = Signal(range(depth + 1))
+        self.mem_attrs = mem_attrs
 
     def elaborate(self, platform):
         m = Module()
@@ -242,7 +243,8 @@ class SyncFIFOBuffered(Elaboratable, FIFOInterface):
         # Effectively, this queue treats the output register of the non-FWFT inner queue as
         # an additional storage element.
         m.submodules.unbuffered = fifo = SyncFIFO(width=self.width, depth=self.depth - 1,
-                                                  fwft=False)
+                                                  fwft=False,
+                                                  mem_attrs=self.mem_attrs)
 
         m.d.comb += [
             fifo.w_data.eq(self.w_data),
@@ -300,7 +302,8 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
     """.strip(),
     w_attributes="")
 
-    def __init__(self, *, width, depth, r_domain="read", w_domain="write", exact_depth=False):
+    def __init__(self, *, width, depth, r_domain="read", w_domain="write", exact_depth=False,
+                    mem_attrs=None):
         if depth != 0:
             try:
                 depth_bits = log2_int(depth, need_pow2=exact_depth)
@@ -317,6 +320,7 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
         self._r_domain = r_domain
         self._w_domain = w_domain
         self._ctr_bits = depth_bits + 1
+        self.mem_attrs = mem_attrs
 
     def elaborate(self, platform):
         m = Module()
@@ -388,7 +392,8 @@ class AsyncFIFO(Elaboratable, FIFOInterface):
         m.d[self._w_domain] += self.w_level.eq((produce_w_bin - consume_w_bin))
         m.d.comb += self.r_level.eq((produce_r_bin - consume_r_bin))
 
-        storage = Memory(width=self.width, depth=self.depth)
+        storage = Memory(width=self.width, depth=self.depth,
+                         attrs=self.mem_attrs)
         w_port  = m.submodules.w_port = storage.write_port(domain=self._w_domain)
         r_port  = m.submodules.r_port = storage.read_port (domain=self._r_domain,
                                                            transparent=False)
