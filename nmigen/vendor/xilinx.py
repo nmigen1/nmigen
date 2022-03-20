@@ -484,7 +484,7 @@ class XilinxPlatform(TemplatedPlatform):
         """,
         r"""
         {{invoke_tool("yosys")}}
-            -p "scratchpad -set xilinx_dsp.multonly 1; synth_xilinx -flatten -nocarry -abc9 -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
+            -p "scratchpad -set xilinx_dsp.multonly 1; synth_xilinx -flatten -nocarry -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
         """,
         r"""
         {{invoke_tool("nextpnr-xilinx")}}
