@@ -468,6 +468,10 @@ class XilinxPlatform(TemplatedPlatform):
             {% endfor %}
         """,
     }
+    # see explanation of yosys scratchpad command:
+    # https://github.com/gatecat/nextpnr-xilinx/issues/22#issuecomment-706710984
+    # also -nocarry option is needed due to P&R bugs when the carry-chains
+    # go beyond 23-25 CARRY4 blocks in length (appx 92-96 bit add/sub/cmp)
     _yosys_nextpnr_command_templates = [
         r"""
         DB_DIR={{get_override("nextpnr_dir")|default("/usr/share/nextpnr")}}/prjxray-db
@@ -480,7 +484,7 @@ class XilinxPlatform(TemplatedPlatform):
         """,
         r"""
         {{invoke_tool("yosys")}}
-            -p "synth_xilinx -flatten -nocarry -abc9 -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
+            -p "scratchpad -set xilinx_dsp.multonly 1; synth_xilinx -flatten -nocarry -abc9 -nobram -arch xc7 -top {{name}}; write_json {{name}}.json" {% for file in platform.iter_files(".v", ".sv", ".vhd", ".vhdl") -%} {{file}} {% endfor %} {{name}}.v
         """,
         r"""
         {{invoke_tool("nextpnr-xilinx")}}
