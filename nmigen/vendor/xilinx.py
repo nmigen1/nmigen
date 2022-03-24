@@ -1000,7 +1000,7 @@ class XilinxPlatform(TemplatedPlatform):
                             valid_xdrs=self._get_valid_xdrs(), valid_attrs=True)
         m = Module()
         i, o, t = self._get_xdr_buffer(m, pin, attrs.get("IOSTANDARD"), o_invert=invert)
-        if not self.oss_toolchain:
+        if self.toolchain != "Symbiflow":
             for bit in range(pin.width):
                 m.submodules["{}_{}".format(pin.name, bit)] = Instance("OBUF",
                     i_I=o[bit],
@@ -1011,7 +1011,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_tristate(self, pin, port, attrs, invert):
-        if self.oss_toolchain:
+        if self.toolchain == "Symbiflow":
             return super().get_tristate(pin, port, attrs, invert)
 
         self._check_feature("single-ended tristate", pin, attrs,
@@ -1027,7 +1027,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_input_output(self, pin, port, attrs, invert):
-        if self.oss_toolchain:
+        if self.toolchain == "Symbiflow":
             return super().get_input_output(pin, port, attrs, invert)
 
         self._check_feature("single-ended input/output", pin, attrs,
@@ -1044,7 +1044,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_diff_input(self, pin, port, attrs, invert):
-        if self.oss_toolchain:
+        if self.toolchain == "Symbiflow":
             return super().get_diff_input(pin, port, attrs, invert)
 
         self._check_feature("differential input", pin, attrs,
@@ -1059,7 +1059,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_diff_output(self, pin, port, attrs, invert):
-        if self.toolchain == ["Symbiflow", "yosys_nextpnr"]:
+        if self.toolchain == "Symbiflow":
             return super().get_diff_output(pin, port, attrs, invert)
 
         self._check_feature("differential output", pin, attrs,
@@ -1074,7 +1074,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_diff_tristate(self, pin, port, attrs, invert):
-        if self.oss_toolchain:
+        if self.toolchain == "Symbiflow":
             return super().get_diff_tristate(pin, port, attrs, invert)
 
         self._check_feature("differential tristate", pin, attrs,
@@ -1090,7 +1090,7 @@ class XilinxPlatform(TemplatedPlatform):
         return m
 
     def get_diff_input_output(self, pin, port, attrs, invert):
-        if self.oss_toolchain:
+        if self.toolchain == "Symbiflow":
             return super().get_diff_input_output(pin, port, attrs, invert)
 
         self._check_feature("differential input/output", pin, attrs,
