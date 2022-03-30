@@ -165,6 +165,7 @@ class LatticeECP5Platform(TemplatedPlatform):
             --speed {{platform.speed}}
             --json {{name}}.json
             --lpf {{name}}.lpf
+            --seed 1
             --textcfg {{name}}.config
         """,
         r"""
