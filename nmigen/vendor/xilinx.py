@@ -474,10 +474,10 @@ class XilinxPlatform(TemplatedPlatform):
     # go beyond 23-25 CARRY4 blocks in length (appx 92-96 bit add/sub/cmp)
     _yosys_nextpnr_command_templates = [
         r"""
-        DB_DIR={{get_override("nextpnr_dir")|default("/usr/share/nextpnr")}}/prjxray-db
+        DB_DIR={{get_override("nextpnr_dir")|default("/usr/local/nextpnr-xilinx")}}/database
         """,
         r"""
-        CHIPDB_DIR={{get_override("nextpnr_dir")|default("/usr/share/nextpnr")}}/xilinx-chipdb
+        CHIPDB_DIR={{get_override("nextpnr_dir")|default("/usr/local/nextpnr-xilinx/share/")}}/xilinx
         """,
         r"""
         PART={{platform._yosys_nextpnr_part_map.get(platform._part, platform._part)}}
