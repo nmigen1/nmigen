@@ -109,9 +109,10 @@ provides a comprehensive Migen compatibility layer! An existing Migen
 design can be synthesized and simulated with nMigen in three steps:
 
   1. Replace all `from migen import <...>` statements with `from
-  nmigen.compat import <...>`.  2. Replace every explicit mention
-  of the default `sys` clock domain with the new default `sync` clock
-  domain. E.g. `ClockSignal("sys")` is changed to `ClockSignal("sync")`.
+  nmigen.compat import <...>`.
+  2. Replace every explicit mention of the default `sys` clock domain
+  with the new default `sync` clock domain. E.g. `ClockSignal("sys")`
+  is changed to `ClockSignal("sync")`.
   3. Migrate from Migen build/platform system to nMigen build/platform
   system. nMigen does not provide a build/platform compatibility layer
   because both the board definition files and the platform abstraction
