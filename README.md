@@ -95,7 +95,7 @@ device-specific primitives, and more. Specifically:
   * Lattice ECP5 (toolchains: **Yosys+nextpnr**, Diamond);
   * Xilinx Spartan 3A (toolchains: ISE);
   * Xilinx Spartan 6 (toolchains: ISE);
-  * Xilinx 7-series (toolchains: Vivado);
+  * Xilinx 7-series (toolchains: **Yosys+nextpnr-xilinx**, Vivado);
   * Xilinx UltraScale (toolchains: Vivado);
   * Intel (toolchains: Quartus);
   * Quicklogic EOS S3 (toolchains: **Yosys+VPR**).
