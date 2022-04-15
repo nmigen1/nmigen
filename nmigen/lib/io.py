@@ -26,6 +26,8 @@ def pin_layout(width, dir, xdr=0):
     if dir in ("i", "io"):
         if xdr > 0:
             fields.append(("i_clk", 1))
+        if xdf >= 2:
+            fields.append(("i_prst", 1))
         if xdr > 2:
             fields.append(("i_fclk", 1))
         if xdr in (0, 1):
@@ -36,6 +38,8 @@ def pin_layout(width, dir, xdr=0):
     if dir in ("o", "oe", "io"):
         if xdr > 0:
             fields.append(("o_clk", 1))
+        if xdr >= 2:
+            fields.append(("o_prst", 1))
         if xdr > 2:
             fields.append(("o_fclk", 1))
         if xdr in (0, 1):
@@ -85,6 +89,10 @@ class Pin(Record):
     i_fclk:
         I/O buffer input fast clock. Synchronizes `i*` on higer gearbox ratios. Present if ``xdr``
         is greater than 2.
+    i_prst:
+        I/O buffer pad reset.  Some FPGAs (ECP5) have a built-in PLL that will
+        lock 180 out of phase 50% of the time without a proper reset.
+        Present if ``xdr`` is greater or equal to 2.
     i : Signal, out
         I/O buffer input, without gearing. Present if ``dir="i"`` or ``dir="io"``, and ``xdr`` is
         equal to 0 or 1.
@@ -96,6 +104,10 @@ class Pin(Record):
     o_fclk:
         I/O buffer output fast clock. Synchronizes `o*` on higher gearbox ratios. Present if
         ``xdr`` is greater than 2.
+    o_prst:
+        I/O buffer pad reset.  Some FPGAs (ECP5) have a built-in PLL that will
+        lock 180 out of phase 50% of the time without a proper reset.
+        Present if ``xdr`` is greater or equal to 2.
     o : Signal, in
         I/O buffer output, without gearing. Present if ``dir="o"`` or ``dir="io"``, and ``xdr`` is
         equal to 0 or 1.

@@ -396,61 +396,61 @@ class LatticeECP5Platform(TemplatedPlatform):
                     o_Q=q[bit]
                 )
 
-        def get_iddr(sclk, d, q0, q1):
+        def get_iddr(sclk, prst, d, q0, q1):
             for bit in range(len(d)):
                 m.submodules += Instance("IDDRX1F",
                     i_SCLK=sclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D=d[bit],
                     o_Q0=q0[bit], o_Q1=q1[bit]
                 )
 
-        def get_iddrx2(sclk, eclk, d, q0, q1, q2, q3):
+        def get_iddrx2(sclk, eclk, prst, d, q0, q1, q2, q3):
             for bit in range(len(d)):
                 m.submodules += Instance("IDDRX2F",
                     i_SCLK=sclk,
                     i_ECLK=eclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D=d[bit],
                     o_Q0=q0[bit], o_Q1=q1[bit], o_Q2=q2[bit], o_Q3=q3[bit]
                 )
 
-        def get_iddr71b(sclk, eclk, d, q0, q1, q2, q3, q4, q5, q6):
+        def get_iddr71b(sclk, eclk, prst, d, q0, q1, q2, q3, q4, q5, q6):
             for bit in range(len(d)):
                 m.submodules += Instance("IDDR71B",
                     i_SCLK=sclk,
                     i_ECLK=eclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D=d[bit],
                     o_Q0=q0[bit], o_Q1=q1[bit], o_Q2=q2[bit], o_Q3=q3[bit],
                     o_Q4=q4[bit], o_Q5=q5[bit], o_Q6=q6[bit],
                 )
 
-        def get_oddr(sclk, d0, d1, q):
+        def get_oddr(sclk, prst, d0, d1, q):
             for bit in range(len(q)):
                 m.submodules += Instance("ODDRX1F",
                     i_SCLK=sclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D0=d0[bit], i_D1=d1[bit],
                     o_Q=q[bit]
                 )
 
-        def get_oddrx2(sclk, eclk, d0, d1, d2, d3, q):
+        def get_oddrx2(sclk, eclk, prst, d0, d1, d2, d3, q):
             for bit in range(len(q)):
                 m.submodules += Instance("ODDRX2F",
                     i_SCLK=sclk,
                     i_ECLK=eclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D0=d0[bit], i_D1=d1[bit], i_D2=d2[bit], i_D3=d3[bit],
                     o_Q=q[bit]
                 )
 
-        def get_oddr71b(sclk, eclk, d0, d1, d2, d3, d4, d5, d6, q):
+        def get_oddr71b(sclk, eclk, prst, d0, d1, d2, d3, d4, d5, d6, q):
             for bit in range(len(q)):
                 m.submodules += Instance("ODDR71B",
                     i_SCLK=sclk,
                     i_ECLK=eclk,
-                    i_RST=Const(0),
+                    i_RST=prst,
                     i_D0=d0[bit], i_D1=d1[bit], i_D2=d2[bit], i_D3=d3[bit],
                     i_D4=d4[bit], i_D5=d5[bit], i_D6=d6[bit],
                     o_Q=q[bit]
@@ -535,23 +535,29 @@ class LatticeECP5Platform(TemplatedPlatform):
                 get_oereg(pin.o_clk, ~pin.oe, t)
         elif pin.xdr == 2:
             if "i" in pin.dir:
-                get_iddr(pin.i_clk, i, pin_i0, pin_i1)
+                get_iddr(pin.i_clk, pin.i_prst, i, pin_i0, pin_i1)
             if "o" in pin.dir:
-                get_oddr(pin.o_clk, pin_o0, pin_o1, o)
+                get_oddr(pin.o_clk, pin.o_prst, pin_o0, pin_o1, o)
             if pin.dir in ("oe", "io"):
                 get_oereg(pin.o_clk, ~pin.oe, t)
         elif pin.xdr == 4:
             if "i" in pin.dir:
-                get_iddrx2(pin.i_clk, pin.i_fclk, i, pin_i0, pin_i1, pin_i2, pin_i3)
+                get_iddrx2(pin.i_clk, pin.i_fclk, pin.i_prst, i,
+                           pin_i0, pin_i1, pin_i2, pin_i3)
             if "o" in pin.dir:
-                get_oddrx2(pin.o_clk, pin.o_fclk, pin_o0, pin_o1, pin_o2, pin_o3, o)
+                get_oddrx2(pin.o_clk, pin.o_fclk, pin.o_prst,
+                            pin_o0, pin_o1, pin_o2, pin_o3, o)
             if pin.dir in ("oe", "io"):
                 get_oereg(pin.o_clk, ~pin.oe, t)
         elif pin.xdr == 7:
             if "i" in pin.dir:
-                get_iddr71b(pin.i_clk, pin.i_fclk, i, pin_i0, pin_i1, pin_i2, pin_i3, pin_i4, pin_i5, pin_i6)
+                get_iddr71b(pin.i_clk, pin.i_fclk, pin.o_prst, i,
+                            pin_i0, pin_i1, pin_i2, pin_i3,
+                            pin_i4, pin_i5, pin_i6)
             if "o" in pin.dir:
-                get_oddr71b(pin.o_clk, pin.o_fclk, pin_o0, pin_o1, pin_o2, pin_o3, pin_o4, pin_o5, pin_o6, o)
+                get_oddr71b(pin.o_clk, pin.o_fclk, pin.o_prst,
+                            pin_o0, pin_o1, pin_o2, pin_o3,
+                            pin_o4, pin_o5, pin_o6, o)
             if pin.dir in ("oe", "io"):
                 get_oereg(pin.o_clk, ~pin.oe, t)
         else:
