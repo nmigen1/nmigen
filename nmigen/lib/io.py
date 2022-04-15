@@ -26,7 +26,7 @@ def pin_layout(width, dir, xdr=0):
     if dir in ("i", "io"):
         if xdr > 0:
             fields.append(("i_clk", 1))
-        if xdf >= 2:
+        if xdr >= 2:
             fields.append(("i_prst", 1))
         if xdr > 2:
             fields.append(("i_fclk", 1))
