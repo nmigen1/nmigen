@@ -493,6 +493,7 @@ class XilinxPlatform(TemplatedPlatform):
             --json {{name}}.json
             --write {{name}}_routed.json
             --fasm {{name}}.fasm
+            --seed 1
         """,
         r"""
         {{invoke_tool("fasm2frames")}}
