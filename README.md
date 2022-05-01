@@ -30,7 +30,8 @@ and elegant designs.
 
 Other nMigen libraries are built on FHDL and provide various tools and
 logic cores. nMigen also contains a simulator that allows test benches
-to be written in Python.
+to be written in Python, and writing and running Formal Correctness Proofs
+in nMigen are also supported, using [Symbiyosys][].
 
 See the [docs/](docs/) folder for more technical information.
 
@@ -49,6 +50,7 @@ The development of nMigen has been supported by [M-Labs][] and
 [yosys]: https://yosyshq.net/yosys/
 [m-labs]: https://m-labs.hk
 [lambdaconcept]: http://lambdaconcept.com/
+[symbiyosys]: https://symbiyosys.readthedocs.io/
 
 ### HLS?
 
