@@ -519,6 +519,7 @@ class XilinxPlatform(TemplatedPlatform):
             --write {{name}}_routed.json
             --fasm {{name}}.fasm
             --seed 1
+            {{get_override("nextpnr_opts")|options}}
         """,
         r"""
         {{invoke_tool("fasm2frames")}}
