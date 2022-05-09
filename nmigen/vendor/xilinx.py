@@ -518,7 +518,6 @@ class XilinxPlatform(TemplatedPlatform):
             --json {{name}}.json
             --write {{name}}_routed.json
             --fasm {{name}}.fasm
-            --seed 1
             {{get_override("nextpnr_opts")|options}}
         """,
         r"""
@@ -698,14 +697,17 @@ class XilinxPlatform(TemplatedPlatform):
             ready = Signal()
             m.submodules += Instance(STARTUP_PRIMITIVE[self.family], o_EOS=ready)
             m.domains += ClockDomain("sync", reset_less=self.default_rst is None)
+            print ("family", self.family)
             if self.toolchain != "Vivado":
                 m.submodules += Instance("BUFGCE", i_CE=ready, i_I=clk_i, o_O=ClockSignal("sync"))
             elif self.family == "series7":
-                # Actually use BUFGCTRL configured as BUFGCE, since using BUFGCE causes
-                # sim/synth mismatches with Vivado 2019.2, and the suggested workaround
-                # (SIM_DEVICE parameter) breaks Vivado 2017.4.
+                # Actually use BUFGCTRL configured as BUFGCE, since using
+                # BUFGCE causes sim/synth mismatches with Vivado 2019.2,
+                # and the suggested workaround (SIM_DEVICE parameter) breaks
+                # Vivado 2017.4. and Vivado v2016.2.
+                # XXX TODO: https://gitlab.com/nmigen/nmigen/-/issues/4
                 m.submodules += Instance("BUFGCTRL",
-                    p_SIM_DEVICE="7SERIES",
+                    # p_SIM_DEVICE="7SERIES", # removing.
                     i_I0=clk_i,   i_S0=C(1, 1), i_CE0=ready,   i_IGNORE0=C(0, 1),
                     i_I1=C(1, 1), i_S1=C(0, 1), i_CE1=C(0, 1), i_IGNORE1=C(1, 1),
                     o_O=ClockSignal("sync")

@@ -1,4 +1,4 @@
-from nmigen import *
+from nmigen import Elaboratable, Signal, Module
 from nmigen.cli import main
 
 
