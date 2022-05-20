@@ -134,6 +134,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_1 = pin_layout(1, dir="i", xdr=2)
         self.assertLayoutEqual(layout_1.fields, {
             "i_clk": ((1, False), DIR_NONE),
+            "i_prst": ((1, False), DIR_NONE),
             "i0": ((1, False), DIR_NONE),
             "i1": ((1, False), DIR_NONE),
         })
@@ -141,6 +142,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_2 = pin_layout(2, dir="i", xdr=2)
         self.assertLayoutEqual(layout_2.fields, {
             "i_clk": ((1, False), DIR_NONE),
+            "i_prst": ((1, False), DIR_NONE),
             "i0": ((2, False), DIR_NONE),
             "i1": ((2, False), DIR_NONE),
         })
@@ -149,6 +151,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_1 = pin_layout(1, dir="o", xdr=2)
         self.assertLayoutEqual(layout_1.fields, {
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((1, False), DIR_NONE),
             "o1": ((1, False), DIR_NONE),
         })
@@ -156,6 +159,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_2 = pin_layout(2, dir="o", xdr=2)
         self.assertLayoutEqual(layout_2.fields, {
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((2, False), DIR_NONE),
             "o1": ((2, False), DIR_NONE),
         })
@@ -164,6 +168,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_1 = pin_layout(1, dir="oe", xdr=2)
         self.assertLayoutEqual(layout_1.fields, {
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((1, False), DIR_NONE),
             "o1": ((1, False), DIR_NONE),
             "oe": ((1, False), DIR_NONE),
@@ -172,6 +177,7 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_2 = pin_layout(2, dir="oe", xdr=2)
         self.assertLayoutEqual(layout_2.fields, {
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((2, False), DIR_NONE),
             "o1": ((2, False), DIR_NONE),
             "oe": ((1, False), DIR_NONE),
@@ -181,9 +187,11 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_1 = pin_layout(1, dir="io", xdr=2)
         self.assertLayoutEqual(layout_1.fields, {
             "i_clk": ((1, False), DIR_NONE),
+            "i_prst": ((1, False), DIR_NONE),
             "i0": ((1, False), DIR_NONE),
             "i1": ((1, False), DIR_NONE),
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((1, False), DIR_NONE),
             "o1": ((1, False), DIR_NONE),
             "oe": ((1, False), DIR_NONE),
@@ -192,9 +200,11 @@ class PinLayoutDDRTestCase(PinLayoutTestCase):
         layout_2 = pin_layout(2, dir="io", xdr=2)
         self.assertLayoutEqual(layout_2.fields, {
             "i_clk": ((1, False), DIR_NONE),
+            "i_prst": ((1, False), DIR_NONE),
             "i0": ((2, False), DIR_NONE),
             "i1": ((2, False), DIR_NONE),
             "o_clk": ((1, False), DIR_NONE),
+            "o_prst": ((1, False), DIR_NONE),
             "o0": ((2, False), DIR_NONE),
             "o1": ((2, False), DIR_NONE),
             "oe": ((1, False), DIR_NONE),
