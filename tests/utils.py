@@ -26,7 +26,7 @@ class FHDLTestCase(unittest.TestCase):
             return repr_str.strip()
         self.assertEqual(prepare_repr(repr(obj)), prepare_repr(repr_str))
 
-    def assertFormal(self, spec, mode="bmc", depth=1):
+    def assertFormal(self, spec, mode="bmc", depth=1, solver=""):
         stack = traceback.extract_stack()
         for frame in reversed(stack):
             if os.path.dirname(__file__) not in frame.filename:
@@ -58,7 +58,7 @@ class FHDLTestCase(unittest.TestCase):
         wait on
 
         [engines]
-        smtbmc
+        smtbmc {solver} -- -- --logic=ALL
 
         [script]
         read_ilang top.il
@@ -71,6 +71,7 @@ class FHDLTestCase(unittest.TestCase):
             mode=mode,
             depth=depth,
             script=script,
+            solver=solver,
             rtlil=rtlil.convert(Fragment.get(spec, platform="formal"))
         )
         with subprocess.Popen(
