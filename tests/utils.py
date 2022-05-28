@@ -6,8 +6,8 @@ import textwrap
 import traceback
 import unittest
 
-from nmigen.hdl.ast import *
-from nmigen.hdl.ir import *
+from nmigen.hdl.ast import Statement
+from nmigen.hdl.ir import Fragment
 from nmigen.back import rtlil
 from nmigen._toolchain import require_tool
 
@@ -40,12 +40,12 @@ class FHDLTestCase(unittest.TestCase):
             caller.name.replace("test_", "")
         )
 
-        # The sby -f switch seems not fully functional when sby is reading from stdin.
+        # sby -f switch seems not fully functional when sby reading from stdin.
         if os.path.exists(os.path.join(spec_dir, spec_name)):
             shutil.rmtree(os.path.join(spec_dir, spec_name))
 
         if mode == "hybrid":
-            # A mix of BMC and k-induction, as per personal communication with Claire Wolf.
+            # mix of BMC and k-induction, per personal comms with Claire Wolf.
             script = "setattr -unset init w:* a:nmigen.sample_reg %d"
             mode   = "bmc"
         else:
@@ -76,8 +76,10 @@ class FHDLTestCase(unittest.TestCase):
         )
         with subprocess.Popen(
                 [require_tool("sby"), "-f", "-d", spec_name],
-                cwd=spec_dir, env={**os.environ, "PYTHONWARNINGS":"ignore"},
-                universal_newlines=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
+                cwd=spec_dir,
+                env={**os.environ, "PYTHONWARNINGS":"ignore"},
+                universal_newlines=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
             stdout, stderr = proc.communicate(config)
             if proc.returncode != 0:
                 self.fail("Formal verification failed:\n" + stdout)
