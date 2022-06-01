@@ -850,8 +850,18 @@ def Cat(*args, src_loc_at=0):
     lose the opportunity for "redirection" (Value.__Cat__ would
     always be called).
     """
-    # rely on Value.cast leaving Value/UserValue unmodified
-    args = [Value.cast(v) for v in flatten(args)]
+    parts = []
+    for index, arg in enumerate(flatten(args)):
+        if isinstance(arg, int) and arg not in [0, 1]:
+            warnings.warn("Argument #{} of Cat() is a bare integer "
+                          "{} used in bit vector "
+                          "context; consider specifying "
+                          "explicit width using C({}, {}) instead"
+                          .format(index + 1, arg, arg, bits_for(arg)),
+                          SyntaxWarning, stacklevel=2 + src_loc_at)
+        # rely on Value.cast leaving Value/UserValue unmodified
+        parts.append(Value.cast(arg))
+    args = parts
     # check if there are no arguments (zero-length Signal).
     if len(args) == 0:
         return _InternalCat(*args, src_loc_at=src_loc_at)
@@ -886,14 +896,7 @@ class _InternalCat(Value):
     """
     def __init__(self, *args, src_loc_at=0):
         super().__init__(src_loc_at=src_loc_at)
-        self.parts = []
-        for index, arg in enumerate(flatten(args)):
-            if isinstance(arg, int) and arg not in [0, 1]:
-                warnings.warn("Argument #{} of Cat() is a bare integer {} used in bit vector "
-                              "context; consider specifying explicit width using C({}, {}) instead"
-                              .format(index + 1, arg, arg, bits_for(arg)),
-                              SyntaxWarning, stacklevel=2 + src_loc_at)
-            self.parts.append(Value.cast(arg))
+        self.parts = [Value.cast(v) for v in flatten(args)]
 
     def shape(self):
         return Shape(sum(len(part) for part in self.parts))
@@ -917,6 +920,13 @@ class _InternalCat(Value):
 
 @final
 def Repl(value, count, *, src_loc_at=0):
+    if isinstance(value, int) and value not in [0, 1]:
+        warnings.warn("Value argument of Repl() is a "
+                      "bare integer {} used in bit vector "
+                      "context; consider specifying explicit "
+                      "width using C({}, {}) instead"
+                      .format(value, value, bits_for(value)),
+                      SyntaxWarning, stacklevel=2 + src_loc_at)
     value = Value.cast(value) # relies on Value/UserValue returned unmodified
     return value.__Repl__(count, src_loc_at=src_loc_at)
 
@@ -947,11 +957,6 @@ class _InternalRepl(Value):
                             .format(count))
 
         super().__init__(src_loc_at=src_loc_at)
-        if isinstance(value, int) and value not in [0, 1]:
-            warnings.warn("Value argument of Repl() is a bare integer {} used in bit vector "
-                          "context; consider specifying explicit width using C({}, {}) instead"
-                          .format(value, value, bits_for(value)),
-                          SyntaxWarning, stacklevel=2 + src_loc_at)
         self.value = Value.cast(value)
         self.count = count
 
