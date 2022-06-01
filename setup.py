@@ -17,8 +17,8 @@ def scm_version():
 setup(
     name="nmigen",
     use_scm_version=scm_version(),
-    author="whitequark",
-    author_email="whitequark@whitequark.org",
+    author="whitequark, m-labs",
+    author_email="whitequark@whitequark.org, sb@m-labs.hk",
     description="Python toolbox for building complex digital hardware",
     #long_description="""TODO""",
     license="BSD",
