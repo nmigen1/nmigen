@@ -119,18 +119,18 @@ def choices(self):
     return self.elems
 
 
-class If(ast.Switch):
+class If(ast._InternalSwitch):
     @deprecated("instead of `If(cond, ...)`, use `with m.If(cond): ...`")
     def __init__(self, cond, *stmts):
         cond = Value.cast(cond)
-        if len(cond) != 1:
+        if not cond.considered_bool():
             cond = cond.bool()
         super().__init__(cond, {("1",): ast.Statement.cast(stmts)})
 
     @deprecated("instead of `.Elif(cond, ...)`, use `with m.Elif(cond): ...`")
     def Elif(self, cond, *stmts):
         cond = Value.cast(cond)
-        if len(cond) != 1:
+        if not cond.considered_bool():
             cond = cond.bool()
         self.cases = OrderedDict((("-" + k,), v) for (k,), v in self.cases.items())
         self.cases[("1" + "-" * len(self.test),)] = ast.Statement.cast(stmts)
@@ -143,7 +143,7 @@ class If(ast.Switch):
         return self
 
 
-class Case(ast.Switch):
+class Case(ast._InternalSwitch):
     @deprecated("instead of `Case(test, { value: stmts })`, use `with m.Switch(test):` and "
                 "`with m.Case(value): stmts`; instead of `\"default\": stmts`, use "
                 "`with m.Case(): stmts`")

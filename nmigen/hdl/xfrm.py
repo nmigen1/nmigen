@@ -100,13 +100,13 @@ class ValueVisitor(metaclass=ABCMeta):
             new_value = self.on_ResetSignal(value)
         elif type(value) is Operator:
             new_value = self.on_Operator(value)
-        elif type(value) is Slice:
+        elif type(value) is _InternalSlice:
             new_value = self.on_Slice(value)
-        elif type(value) is Part:
+        elif type(value) is _InternalPart:
             new_value = self.on_Part(value)
-        elif type(value) is Cat:
+        elif type(value) is _InternalCat:
             new_value = self.on_Cat(value)
-        elif type(value) is Repl:
+        elif type(value) is _InternalRepl:
             new_value = self.on_Repl(value)
         elif type(value) is ArrayProxy:
             new_value = self.on_ArrayProxy(value)
@@ -209,7 +209,7 @@ class StatementVisitor(metaclass=ABCMeta):
         return True
 
     def on_statement(self, stmt):
-        if type(stmt) is Assign:
+        if type(stmt) is _InternalAssign:
             new_stmt = self.on_Assign(stmt)
         elif type(stmt) is Assert:
             new_stmt = self.on_Assert(stmt)
@@ -219,7 +219,7 @@ class StatementVisitor(metaclass=ABCMeta):
             new_stmt = self.on_Cover(stmt)
         elif type(stmt) is Display:
             new_stmt = self.on_Display(stmt)
-        elif isinstance(stmt, Switch):
+        elif isinstance(stmt, _InternalSwitch):
             # Uses `isinstance()` and not `type() is` because nmigen.compat requires it.
             new_stmt = self.on_Switch(stmt)
         elif isinstance(stmt, Iterable):
@@ -228,7 +228,8 @@ class StatementVisitor(metaclass=ABCMeta):
             new_stmt = self.on_unknown_statement(stmt)
         if isinstance(new_stmt, Statement) and self.replace_statement_src_loc(stmt, new_stmt):
             new_stmt.src_loc = stmt.src_loc
-            if isinstance(new_stmt, Switch) and isinstance(stmt, Switch):
+            if (isinstance(new_stmt, _InternalSwitch) and
+                isinstance(stmt, _InternalSwitch)):
                 new_stmt.case_src_locs = stmt.case_src_locs
         if isinstance(new_stmt, Property):
             new_stmt._MustUse__used = True

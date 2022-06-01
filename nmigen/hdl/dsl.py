@@ -163,7 +163,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         raise SyntaxError("Instead of inheriting from `Module`, inherit from `Elaboratable` "
                           "and return a `Module` from the `elaborate(self, platform)` method")
 
-    def __init__(self):
+    def __init__(self, _astTypeFn=None):
         _ModuleBuilderRoot.__init__(self, self, depth=0)
         self.submodules    = _ModuleBuilderSubmodules(self)
         self.domains       = _ModuleBuilderDomainSet(self)
@@ -177,6 +177,14 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         self._anon_submodules  = []
         self._domains      = {}
         self._generated    = {}
+
+        # to complete the Type 1 (ast.*) nmigen language construct abstraction
+        # from Type 2 (Module - this class) Module must be told what AST type
+        # it may cast m.If/Elif conditions and m.Switch
+        self._setAstTypeCastFn(_astTypeFn)
+
+    def _setAstTypeCastFn(self, typefn=None):
+        self._astTypeCast  = typefn or Value.cast
 
     def _check_context(self, construct, context):
         if self._ctrl_context != context:
@@ -209,7 +217,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
         return data
 
     def _check_signed_cond(self, cond):
-        cond = Value.cast(cond)
+        cond = self._astTypeCast(cond)
         width, signed = cond.shape()
         if signed:
             warnings.warn("Signed values in If/Elif conditions usually result from inverting "
@@ -217,6 +225,10 @@ class Module(_ModuleBuilderRoot, Elaboratable):
                           "Replace `~flag` with `not flag`. (If this is a false positive, "
                           "silence this warning with `m.If(x)` → `m.If(x.bool())`.)",
                           SyntaxWarning, stacklevel=4)
+        # check if the condition is not considered boolean, and only
+        # convert it if it is not
+        if not cond.considered_bool():
+            cond = cond.bool()
         return cond
 
     @_guardedcontextmanager("If")
@@ -286,7 +298,7 @@ class Module(_ModuleBuilderRoot, Elaboratable):
     def Switch(self, test):
         self._check_context("Switch", context=None)
         switch_data = self._set_ctrl("Switch", {
-            "test":    Value.cast(test),
+            "test":    self._astTypeCast(test),
             "cases":   OrderedDict(),
             "src_loc": tracer.get_src_loc(src_loc_at=1),
             "case_src_locs": {},
@@ -433,9 +445,6 @@ class Module(_ModuleBuilderRoot, Elaboratable):
             tests, cases = [], OrderedDict()
             for if_test, if_case in zip(if_tests + [None], if_bodies):
                 if if_test is not None:
-                    if_test = Value.cast(if_test)
-                    if len(if_test) != 1:
-                        if_test = if_test.bool()
                     tests.append(if_test)
 
                 if if_test is not None:
@@ -484,7 +493,9 @@ class Module(_ModuleBuilderRoot, Elaboratable):
             self._pop_ctrl()
 
         for stmt in Statement.cast(assigns):
-            if not compat_mode and not isinstance(stmt, (Assign, Assert, Assume, Cover, Display)):
+            if not compat_mode and not isinstance(stmt, (_InternalAssign,
+                                                  Assert, Assume, 
+                                                  Cover, Display)):
                 raise SyntaxError(
                     "Only assignments and property checks may be appended to d.{}"
                     .format(domain_name(domain)))

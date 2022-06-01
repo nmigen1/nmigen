@@ -598,7 +598,7 @@ class _RHSValueCompiler(_ValueCompiler):
             raise TypeError # :nocov:
 
     def _prepare_value_for_Slice(self, value):
-        if isinstance(value, (ast.Signal, ast.Slice, ast.Cat)):
+        if isinstance(value, (ast.Signal, ast._InternalSlice, ast._InternalCat)):
             sigspec = self(value)
         else:
             sigspec = self.s.rtlil.wire(len(value), src=_src(value.src_loc))
@@ -664,7 +664,8 @@ class _LHSValueCompiler(_ValueCompiler):
         return wire_next or wire_curr
 
     def _prepare_value_for_Slice(self, value):
-        assert isinstance(value, (ast.Signal, ast.Slice, ast.Cat, ast.Part))
+        assert isinstance(value, (ast.Signal, ast._InternalSlice,
+                                   ast._InternalCat, ast.Part))
         return self(value)
 
     def on_Part(self, value):

@@ -179,11 +179,11 @@ class ValueTestCase(FHDLTestCase):
 
     def test_getitem_int(self):
         s1 = Const(10)[0]
-        self.assertIsInstance(s1, Slice)
+        self.assertIsInstance(s1, _InternalSlice)
         self.assertEqual(s1.start, 0)
         self.assertEqual(s1.stop, 1)
         s2 = Const(10)[-1]
-        self.assertIsInstance(s2, Slice)
+        self.assertIsInstance(s2, _InternalSlice)
         self.assertEqual(s2.start, 3)
         self.assertEqual(s2.stop, 4)
         with self.assertRaisesRegex(IndexError,
@@ -192,22 +192,22 @@ class ValueTestCase(FHDLTestCase):
 
     def test_getitem_slice(self):
         s1 = Const(10)[1:3]
-        self.assertIsInstance(s1, Slice)
+        self.assertIsInstance(s1, _InternalSlice)
         self.assertEqual(s1.start, 1)
         self.assertEqual(s1.stop, 3)
         s2 = Const(10)[1:-2]
-        self.assertIsInstance(s2, Slice)
+        self.assertIsInstance(s2, _InternalSlice)
         self.assertEqual(s2.start, 1)
         self.assertEqual(s2.stop, 2)
         s3 = Const(31)[::2]
-        self.assertIsInstance(s3, Cat)
-        self.assertIsInstance(s3.parts[0], Slice)
+        self.assertIsInstance(s3, _InternalCat)
+        self.assertIsInstance(s3.parts[0], _InternalSlice)
         self.assertEqual(s3.parts[0].start, 0)
         self.assertEqual(s3.parts[0].stop, 1)
-        self.assertIsInstance(s3.parts[1], Slice)
+        self.assertIsInstance(s3.parts[1], _InternalSlice)
         self.assertEqual(s3.parts[1].start, 2)
         self.assertEqual(s3.parts[1].stop, 3)
-        self.assertIsInstance(s3.parts[2], Slice)
+        self.assertIsInstance(s3.parts[2], _InternalSlice)
         self.assertEqual(s3.parts[2].start, 4)
         self.assertEqual(s3.parts[2].stop, 5)
 
@@ -657,21 +657,21 @@ class BitSelectTestCase(FHDLTestCase):
 
     def test_shape(self):
         s1 = self.c.bit_select(self.s, 2)
-        self.assertIsInstance(s1, Part)
+        self.assertIsInstance(s1, _InternalPart)
         self.assertEqual(s1.shape(), unsigned(2))
         self.assertIsInstance(s1.shape(), Shape)
         s2 = self.c.bit_select(self.s, 0)
-        self.assertIsInstance(s2, Part)
+        self.assertIsInstance(s2, _InternalPart)
         self.assertEqual(s2.shape(), unsigned(0))
 
     def test_stride(self):
         s1 = self.c.bit_select(self.s, 2)
-        self.assertIsInstance(s1, Part)
+        self.assertIsInstance(s1, _InternalPart)
         self.assertEqual(s1.stride, 1)
 
     def test_const(self):
         s1 = self.c.bit_select(1, 2)
-        self.assertIsInstance(s1, Slice)
+        self.assertIsInstance(s1, _InternalSlice)
         self.assertRepr(s1, """(slice (const 8'd0) 1:3)""")
 
     def test_width_wrong(self):
@@ -690,18 +690,18 @@ class WordSelectTestCase(FHDLTestCase):
 
     def test_shape(self):
         s1 = self.c.word_select(self.s, 2)
-        self.assertIsInstance(s1, Part)
+        self.assertIsInstance(s1, _InternalPart)
         self.assertEqual(s1.shape(), unsigned(2))
         self.assertIsInstance(s1.shape(), Shape)
 
     def test_stride(self):
         s1 = self.c.word_select(self.s, 2)
-        self.assertIsInstance(s1, Part)
+        self.assertIsInstance(s1, _InternalPart)
         self.assertEqual(s1.stride, 2)
 
     def test_const(self):
         s1 = self.c.word_select(1, 2)
-        self.assertIsInstance(s1, Slice)
+        self.assertIsInstance(s1, _InternalSlice)
         self.assertRepr(s1, """(slice (const 8'd0) 2:4)""")
 
     def test_width_wrong(self):
@@ -759,6 +759,12 @@ class ReplTestCase(FHDLTestCase):
         self.assertIsInstance(s1.shape(), Shape)
         s2 = Repl(Const(10), 0)
         self.assertEqual(s2.shape(), unsigned(0))
+
+    def test_integer(self):
+        s1 = Repl(0, 3) # integer value, 1 bit long
+        self.assertEqual(s1.shape(), unsigned(3))
+        s1 = Repl(0b1010, 3) # takes 4 bits to store, repeated 3 times => 12 bit
+        self.assertEqual(s1.shape(), unsigned(12))
 
     def test_count_wrong(self):
         with self.assertRaises(TypeError):

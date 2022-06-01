@@ -15,6 +15,8 @@ __all__ = [
     "Shape", "signed", "unsigned",
     "Value", "Const", "C", "AnyConst", "AnySeq", "Operator", "Mux", "Part", "Slice", "Cat", "Repl",
     "Array", "ArrayProxy",
+    "_InternalSwitch", "_InternalAssign", "_InternalRepl", "_InternalCat",
+    "_InternalPart", "_InternalSlice",
     "Signal", "ClockSignal", "ResetSignal",
     "UserValue", "ValueCastable",
     "Sample", "Past", "Stable", "Rose", "Fell", "Initial",
@@ -149,6 +151,34 @@ class Value(metaclass=ABCMeta):
     def __init__(self, *, src_loc_at=0):
         super().__init__()
         self.src_loc = tracer.get_src_loc(1 + src_loc_at)
+
+    # These are redirection of "Type (1) - AST " nmigen language constructs
+    # If over-ridden to provide advanced behaviour, the implementation
+    # *MUST NOT* use "Type (2) - dsl.Module" nmigen language constructs
+    # (m.If, m.Else, m.Switch, m.FSM): it creates complications
+    # (recursive dependencies) in dsl.Module.
+
+    def __Slice__(self, start, stop, *, src_loc_at=0):
+        return _InternalSlice(self, start, stop, src_loc_at=src_loc_at)
+    def __Part__(self, offset, width, stride=1, *, src_loc_at=0):
+        return _InternalPart(self, offset, width, stride,
+                             src_loc_at=src_loc_at)
+    def __Repl__(self, count, *, src_loc_at=0):
+        return _InternalRepl(self, count, src_loc_at=src_loc_at)
+    def __Cat__(self, *args, src_loc_at=0):
+        return _InternalCat(self, *args, src_loc_at=src_loc_at)
+    def __Mux__(self, val1, val0):
+        return _InternalMux(self, val1, val0)
+    def __Switch__(self, cases, *, src_loc=None, src_loc_at=0,
+                                   case_src_locs={}):
+        return _InternalSwitch(self, cases, src_loc=src_loc,
+                               src_loc_at=src_loc_at,
+                               case_src_locs=case_src_locs)
+    def __Assign__(self, rhs, *, src_loc_at=0):
+        return _InternalAssign(self, rhs, src_loc_at=src_loc_at)
+
+    def considered_bool(self):
+        return len(self) == 1
 
     def __bool__(self):
         raise TypeError("Attempted to convert nMigen value to Python boolean")
@@ -708,6 +738,12 @@ class Operator(Value):
 
 
 def Mux(sel, val1, val0):
+    if isinstance(sel, bool): # one instance where Mux is passed an actual bool
+        sel = Value.cast(sel)
+    return sel.__Mux__(val1, val0)
+
+
+def _InternalMux(sel, val1, val0):
     """Choose between two values.
 
     Parameters
@@ -727,7 +763,14 @@ def Mux(sel, val1, val0):
 
 
 @final
-class Slice(Value):
+def Slice(value, start, stop, *, src_loc_at=0):
+    # this relies on Value.cast returning the original object unmodified if
+    # it is already derived from Value (UserValue)
+    value = Value.cast(value)
+    return value.__Slice__(start, stop, src_loc_at=src_loc_at)
+
+
+class _InternalSlice(Value):
     def __init__(self, value, start, stop, *, src_loc_at=0):
         if not isinstance(start, int):
             raise TypeError("Slice start must be an integer, not {!r}".format(start))
@@ -765,7 +808,11 @@ class Slice(Value):
 
 
 @final
-class Part(Value):
+def Part(value, offset, width, stride=1, *, src_loc_at=0):
+    return value.__Part__(offset, width, stride, src_loc_at=src_loc_at)
+
+
+class _InternalPart(Value):
     def __init__(self, value, offset, width, stride=1, *, src_loc_at=0):
         if not isinstance(width, int) or width < 0:
             raise TypeError("Part width must be a non-negative integer, not {!r}".format(width))
@@ -793,7 +840,27 @@ class Part(Value):
 
 
 @final
-class Cat(Value):
+def Cat(*args, src_loc_at=0):
+    """Concatenate values.
+
+    Behaviour is required to be identical to _InternalCat.
+    The first argument "defines" the way that all others are
+    handled.  If the first argument is derived from UserValue,
+    it is not downcast to a type Value because doing so would
+    lose the opportunity for "redirection" (Value.__Cat__ would
+    always be called).
+    """
+    # rely on Value.cast leaving Value/UserValue unmodified
+    args = [Value.cast(v) for v in flatten(args)]
+    # check if there are no arguments (zero-length Signal).
+    if len(args) == 0:
+        return _InternalCat(*args, src_loc_at=src_loc_at)
+    # assume first item defines the "handling" for all others
+    first, rest = args[0], args[1:]
+    return first.__Cat__(*rest, src_loc_at=src_loc_at)
+
+
+class _InternalCat(Value):
     """Concatenate values.
 
     Form a compound ``Value`` from several smaller ones by concatenation.
@@ -849,7 +916,12 @@ class Cat(Value):
 
 
 @final
-class Repl(Value):
+def Repl(value, count, *, src_loc_at=0):
+    value = Value.cast(value) # relies on Value/UserValue returned unmodified
+    return value.__Repl__(count, src_loc_at=src_loc_at)
+
+
+class _InternalRepl(Value):
     """Replicate a value
 
     An input value is replicated (repeated) several times
@@ -1413,7 +1485,11 @@ class Statement:
 
 
 @final
-class Assign(Statement):
+def Assign(lhs, rhs, *, src_loc_at=0):
+    return lhs.__Assign__(rhs, src_loc_at=src_loc_at)
+
+
+class _InternalAssign(Statement):
     def __init__(self, lhs, rhs, *, src_loc_at=0):
         super().__init__(src_loc_at=src_loc_at)
         self.lhs = Value.cast(lhs)
@@ -1496,7 +1572,12 @@ class Display(Statement):
 
 
 # @final
-class Switch(Statement):
+def Switch(test, cases, *, src_loc=None, src_loc_at=0, case_src_locs={}):
+    return test.__Switch__(cases, src_loc=src_loc, src_loc_at=src_loc_at,
+                           case_src_locs=case_src_locs)
+
+
+class _InternalSwitch(Statement):
     def __init__(self, test, cases, *, src_loc=None, src_loc_at=0, case_src_locs={}):
         if src_loc is None:
             super().__init__(src_loc_at=src_loc_at)
@@ -1661,12 +1742,12 @@ class ValueKey:
         elif isinstance(self.value, Operator):
             self._hash = hash((self.value.operator,
                                tuple(ValueKey(o) for o in self.value.operands)))
-        elif isinstance(self.value, Slice):
+        elif isinstance(self.value, _InternalSlice):
             self._hash = hash((ValueKey(self.value.value), self.value.start, self.value.stop))
-        elif isinstance(self.value, Part):
+        elif isinstance(self.value, _InternalPart):
             self._hash = hash((ValueKey(self.value.value), ValueKey(self.value.offset),
                               self.value.width, self.value.stride))
-        elif isinstance(self.value, Cat):
+        elif isinstance(self.value, _InternalCat):
             self._hash = hash(tuple(ValueKey(o) for o in self.value.parts))
         elif isinstance(self.value, ArrayProxy):
             self._hash = hash((ValueKey(self.value.index),
@@ -1699,16 +1780,16 @@ class ValueKey:
                     len(self.value.operands) == len(other.value.operands) and
                     all(ValueKey(a) == ValueKey(b)
                         for a, b in zip(self.value.operands, other.value.operands)))
-        elif isinstance(self.value, Slice):
+        elif isinstance(self.value, _InternalSlice):
             return (ValueKey(self.value.value) == ValueKey(other.value.value) and
                     self.value.start == other.value.start and
                     self.value.stop == other.value.stop)
-        elif isinstance(self.value, Part):
+        elif isinstance(self.value, _InternalPart):
             return (ValueKey(self.value.value) == ValueKey(other.value.value) and
                     ValueKey(self.value.offset) == ValueKey(other.value.offset) and
                     self.value.width == other.value.width and
                     self.value.stride == other.value.stride)
-        elif isinstance(self.value, Cat):
+        elif isinstance(self.value, _InternalCat):
             return all(ValueKey(a) == ValueKey(b)
                         for a, b in zip(self.value.parts, other.value.parts))
         elif isinstance(self.value, ArrayProxy):
@@ -1737,7 +1818,7 @@ class ValueKey:
             return self.value < other.value
         elif isinstance(self.value, (Signal, AnyValue)):
             return self.value.duid < other.value.duid
-        elif isinstance(self.value, Slice):
+        elif isinstance(self.value, _InternalSlice):
             return (ValueKey(self.value.value) < ValueKey(other.value.value) and
                     self.value.start < other.value.start and
                     self.value.end < other.value.end)
