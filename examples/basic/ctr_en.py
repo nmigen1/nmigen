@@ -1,5 +1,5 @@
-from nmigen import *
-from nmigen.sim import *
+from nmigen import Elaboratable, Signal, EnableInserter, Module
+from nmigen.sim import Simulator
 from nmigen.back import verilog
 
 
