@@ -1314,11 +1314,13 @@ class ValueCastable:
         """
         @functools.wraps(func)
         def wrapper_memoized(self, *args, **kwargs):
-            # Use `in self.__dict__` instead of `hasattr` to avoid interfering with custom
-            # `__getattr__` implementations.
-            if not "_ValueCastable__lowered_to" in self.__dict__:
-                self.__lowered_to = func(self, *args, **kwargs)
-            return self.__lowered_to
+            # Use `self.__dict__` instead of directly accessing attributes to
+            # avoid interfering with custom `__getattr__` and `__setattr__`
+            # implementations.
+            if "_ValueCastable__lowered_to" not in self.__dict__:
+                self.__dict__["_ValueCastable__lowered_to"] = func(
+                    self, *args, **kwargs)
+            return self.__dict__["_ValueCastable__lowered_to"]
         wrapper_memoized.__memoized = True
         return wrapper_memoized
 
