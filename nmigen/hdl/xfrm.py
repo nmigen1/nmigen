@@ -9,6 +9,7 @@ from .ast import _StatementList
 from .cd import *
 from .ir import *
 from .rec import *
+from .smtlib2 import SmtExpr
 
 
 __all__ = ["ValueVisitor", "ValueTransformer",
@@ -78,6 +79,10 @@ class ValueVisitor(metaclass=ABCMeta):
     def on_Initial(self, value):
         pass # :nocov:
 
+    @abstractmethod
+    def on_SmtExpr(self, value):
+        pass  # :nocov:
+
     def on_unknown_value(self, value):
         raise TypeError("Cannot transform value {!r}".format(value)) # :nocov:
 
@@ -114,6 +119,8 @@ class ValueVisitor(metaclass=ABCMeta):
             new_value = self.on_Sample(value)
         elif type(value) is Initial:
             new_value = self.on_Initial(value)
+        elif type(value) is SmtExpr:
+            new_value = self.on_SmtExpr(value)
         elif isinstance(value, UserValue):
             # Uses `isinstance()` and not `type() is` to allow inheriting.
             new_value = self.on_value(value._lazy_lower())
@@ -172,6 +179,9 @@ class ValueTransformer(ValueVisitor):
     def on_Initial(self, value):
         return value
 
+    def on_SmtExpr(self, value):
+        return SmtExpr(width=value.width, inp=self.on_value(value.inp),
+                       expr=value.expr)
 
 class StatementVisitor(metaclass=ABCMeta):
     @abstractmethod
@@ -402,6 +412,9 @@ class DomainCollector(ValueVisitor, StatementVisitor):
 
     def on_Initial(self, value):
         pass
+
+    def on_SmtExpr(self, value):
+        self.on_value(value.inp)
 
     def on_Assign(self, stmt):
         self.on_value(stmt.lhs)

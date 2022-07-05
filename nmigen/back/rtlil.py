@@ -2,6 +2,8 @@ import io
 from collections import OrderedDict
 from contextlib import contextmanager
 
+from nmigen.hdl.smtlib2 import SmtExpr
+
 from .._utils import bits_for, flatten
 from ..hdl import ast, ir, mem, xfrm
 
@@ -386,6 +388,9 @@ class _ValueCompiler(xfrm.ValueVisitor):
     def on_Initial(self, value):
         raise NotImplementedError # :nocov:
 
+    def on_SmtExpr(self, value):
+        raise NotImplementedError  # :nocov:
+
     def on_Cat(self, value):
         return "{{ {} }}".format(" ".join(reversed([self(o) for o in value.parts])))
 
@@ -631,6 +636,26 @@ class _RHSValueCompiler(_ValueCompiler):
 
     def on_Repl(self, value):
         return "{{ {} }}".format(" ".join(self(value.value) for _ in range(value.count)))
+
+    def on_SmtExpr(self, value):
+        assert isinstance(value, SmtExpr)
+        inp_bits, inp_sign = value.inp.shape()
+        builder: _Builder = self.s.rtlil.rtlil
+        with builder.module(name=builder.anonymous(),
+                            attrs={"blackbox": 1, "smtlib2_module": 1}) as m:
+            m.wire(width=value.inp.shape().width, name="A",
+                   port_id=0, port_kind="input", src=_src(value.src_loc))
+            m.wire(width=value.width, name="Y",
+                   port_id=1, port_kind="output",
+                   attrs={"smtlib2_comb_expr": value.expr},
+                   src=_src(value.src_loc))
+            kind = m.name
+        res = self.s.rtlil.wire(width=value.width, src=_src(value.src_loc))
+        self.s.rtlil.cell(kind=kind, ports={
+            "\\A": self(value.inp),
+            "\\Y": res,
+        }, src=_src(value.src_loc))
+        return res
 
 
 class _LHSValueCompiler(_ValueCompiler):
