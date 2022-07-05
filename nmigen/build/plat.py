@@ -70,7 +70,7 @@ class Platform(ResourceManager, metaclass=ABCMeta):
 
     @property
     def _toolchain_env_var(self):
-        return f"NMIGEN_ENV_{self.toolchain}"
+        return f"NMIGEN_ENV_{tool_env_var(self.toolchain)}"
 
     def build(self, elaboratable, name="top",
               build_dir="build", do_build=True,
