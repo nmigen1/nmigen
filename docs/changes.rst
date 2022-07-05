@@ -4,6 +4,14 @@ Changelog
 This document describes changes to the public interfaces in the nMigen language and standard library. It does not include most bug fixes or implementation changes.
 
 
+Toolchain changes
+-----------------
+
+.. currentmodule:: nmigen
+
+* Added: ``debug_verilog`` override in :class:`build.TemplatedPlatform`.
+
+
 Version 0.3
 ============
 
