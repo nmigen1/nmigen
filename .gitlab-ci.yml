@@ -4,7 +4,7 @@ before_script:
     - apt-get update
     # one package per line to simplify sorting, git diff, etc.
     - >-
-        apt-get -y install
+        apt-get -y install --no-install-recommends
         autoconf
         bison
         build-essential
@@ -12,6 +12,7 @@ before_script:
         clang
         cmake
         curl
+        default-jre-headless
         flex
         gawk
         git
@@ -40,7 +41,16 @@ before_script:
     - ccache --show-stats || true
     - python3 -m venv --system-site-packages .venv
     - . .venv/bin/activate
-    - python3 -m pip install pytest-xdist pytest-cov coverage
+    - python3 -m pip install pytest-xdist pytest-cov coverage toml
+
+    - git clone --depth 1 -b cvc5-1.0.0 https://github.com/cvc5/cvc5.git cvc5
+    - pushd cvc5
+    - git rev-parse HEAD
+    - ./configure.sh --poly --auto-download -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++ -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc
+    - cd build
+    - make -j$(nproc)
+    - make install
+    - popd
 
     - git clone --depth 1 -b $yosys_version $yosys_url yosys
     - pushd yosys
@@ -51,9 +61,10 @@ before_script:
     - popd
     - yosys -V
 
-    - git clone https://github.com/YosysHQ/sby.git sby
+    - git clone $sby_url sby
     - pushd sby
-    - git checkout de00dc71db618f711976bdee3d9275857849bb99
+    - git checkout $sby_version
+    - git rev-parse HEAD
     - make install
     - popd
 
@@ -73,14 +84,16 @@ before_script:
     - make install
     - popd
 
-build_on_yosys_0.13_with_jny:
+build_on_yosys_smtlib2-expr-support-on-0.13:
     stage: build
     script:
         - . .venv/bin/activate
         - python3 setup.py develop
         - pytest -n auto --cov-report=xml:cov.xml tests --cov 
     variables:
-        yosys_version: yosys-0.13-with-write_jny
+        sby_version: master
+        sby_url: https://git.libre-soc.org/git/SymbiYosys.git
+        yosys_version: smtlib2-expr-support-on-0.13
         yosys_url: https://git.libre-soc.org/git/yosys.git
     artifacts:
         reports:
@@ -92,7 +105,7 @@ build_on_yosys_0.13_with_jny:
         when: always
         paths:
             - ccache
-        key: yosys-0-13-with-jny
+        key: yosys_smtlib2-expr-support-on-0_13
 
 
 build_on_yosys_master:
@@ -102,6 +115,8 @@ build_on_yosys_master:
         - python3 setup.py develop
         - pytest -n auto --cov-report=xml:cov.xml tests --cov
     variables:
+        sby_version: master
+        sby_url: https://github.com/YosysHQ/sby.git
         yosys_version: master
         yosys_url: https://github.com/YosysHQ/yosys.git
     artifacts:
