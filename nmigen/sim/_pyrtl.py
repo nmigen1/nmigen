@@ -101,6 +101,9 @@ class _ValueCompiler(ValueVisitor, _Compiler):
     def on_Initial(self, value):
         raise NotImplementedError # :nocov:
 
+    def on_SmtExpr(self, value):
+        raise NotImplementedError  # :nocov:
+
 
 class _RHSValueCompiler(_ValueCompiler):
     def __init__(self, state, emitter, *, mode, inputs=None):
