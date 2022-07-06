@@ -31,7 +31,8 @@ and elegant designs.
 Other nMigen libraries are built on FHDL and provide various tools and
 logic cores. nMigen also contains a simulator that allows test benches
 to be written in Python, and writing and running Formal Correctness Proofs
-in nMigen are also supported, using [Symbiyosys][].
+in nMigen (including now for IEEE754 FP) are also supported, using
+[Symbiyosys][].
 
 See the [docs/](docs/) folder for more technical information.
 
@@ -54,16 +55,20 @@ The development of nMigen has been supported by [M-Labs][] and
 
 ### HLS?
 
-nMigen is *not* a "Python-to-FPGA" conventional high level synthesis
-(HLS) tool. It will *not* take a Python program as input and generate a
-hardware implementation of it. If you prefer this style of HLS, you may
-wish to try [MyHDL](https://myhdl.org). In nMigen, the Python program
+Like [PyRTL][], nMigen is *not* a "Python-to-FPGA" conventional high level
+synthesis (HLS) tool. It will *not* take a Python program as input and
+compile a hardware implementation of it, taking actual python syntax
+conceptually and directly as if it was HDL. If you prefer this style of
+HLS, you may wish to try [MyHDL][]. In nMigen, the Python program
 is executed by a regular Python interpreter, and it emits explicit
 statements in the FHDL domain-specific language. Therefore, unlike MyHDL
 (which is restricted to a subset of python), it is possible to use the
 full OO power of python to create HDL.  Writing a conventional HLS tool,
 similar to MyHDL, that uses nMigen as an internal component might be a
 good idea, on the other hand :)
+
+[pyrtl]: https://pyrtl.readthedocs.io/
+[myhdl]: https://myhdl.org
 
 ### Installation
 
