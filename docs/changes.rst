@@ -10,6 +10,7 @@ Toolchain changes
 .. currentmodule:: nmigen
 
 * Added: ``debug_verilog`` override in :class:`build.TemplatedPlatform`.
+* Added: Formal Correctness support for smt2 IEEE754 FP via SymbiYosys
 
 
 Platform integration changes
