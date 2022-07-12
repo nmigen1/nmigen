@@ -12,6 +12,9 @@ def example_test(name):
                               stdout=subprocess.DEVNULL)
     return test_function
 
+# stop nosetests3 attempting to run this function
+example_test.__test__ = False
+
 
 class ExamplesTestCase(FHDLTestCase):
     test_alu        = example_test("basic/alu.py")
