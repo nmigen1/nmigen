@@ -1480,7 +1480,7 @@ class Display(Statement):
     def __init__(self, text, *args):
         super().__init__(src_loc_at=0)
         self.text = text
-        self.args = args
+        self.args = tuple(Value.cast(i) for i in args)
         self.test = Signal()
         self._check = Signal(reset_less=True)
         self._check.src_loc = self.src_loc
