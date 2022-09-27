@@ -15,23 +15,36 @@ This guide introduces the nMigen language in depth. It assumes familiarity with 
 The prelude
 ===========
 
-Because nMigen is a regular Python library, it needs to be imported before use. The root ``nmigen`` module, called *the prelude*, is carefully curated to export a small amount of the most essential names, useful in nearly every design. In source files dedicated to nMigen code, it is a good practice to use a :ref:`glob import <python:tut-pkg-import-star>` for readability:
+nMigen is a regular Python library, so needs to be imported before
+use. The root ``nmigen`` module, called *the prelude*, is carefully
+curated to export a small amount of the most essential names, useful in
+nearly every design. In source files dedicated to nMigen code, it is
+bad practice to use a :ref:`glob import <python:tut-pkg-import-star>`
+but for convenience for the purposes of this tutorial it is done here:
 
 .. code-block::
 
-   from nmigen import *
+   from nmigen import *   # strongly discouraged but convenient
 
-However, if a source file uses nMigen together with other libraries, or if glob imports are frowned upon, it is conventional to use a short alias instead:
+However as is described in many tutorials and programming "best practice"
+documents across the internet, wildcard (glob) imports quickly creates
+unmanageable and unmaintainable projects, especially when wildcard-importing
+from several different libraries.
+If a source file uses nMigen together with many other libraries, it is
+conventional to use a short alias instead:
 
 .. code-block::
 
-   import nmigen as nm
+   import nmigen as nm    # useful in very large projects
 
-All of the examples below assume that a glob import is used.
+Best practice is to import the individual features needed: standard Python
+linter tools may then be used.  It is also clearer as to what any given
+nMigen module actually uses.
 
 .. testsetup::
 
-   from nmigen import *
+   from nmigen import (Elaboratable, Module, Signal,
+                       Const, Mux)
 
 
 .. _lang-values:
