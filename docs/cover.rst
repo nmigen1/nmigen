@@ -5,4 +5,4 @@ The nMigen documentation
    :maxdepth: 1
 
    index
-   Board definitions <https://nmigen.info/nmigen-boards/latest/>
+   Board definitions <https://nmigen.net/nmigen-boards/>
