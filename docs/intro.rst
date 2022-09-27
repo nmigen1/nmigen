@@ -4,10 +4,16 @@
 Introduction
 ############
 
-The core nMigen project provides an open-source toolchain for developing hardware based on synchronous digital logic using the Python programming language. It aims to be easy to learn and use, reduce or eliminate common coding mistakes, and simplify the design of complex hardware with reusable components.
+The core nMigen(r) project provides an open-source toolchain for developing hardware based on synchronous digital logic using the Python programming language. It aims to be easy to learn and use, reduce or eliminate common coding mistakes, and simplify the design of complex hardware with reusable components.
 
 The nMigen toolchain consists of the :ref:`nMigen language <intro-lang>`, the :ref:`standard library <intro-stdlib>`, the :ref:`simulator <intro-sim>`, and the :ref:`build system <intro-build>`, covering all steps of a typical FPGA development workflow. At the same time, it does not restrict the designer's choice of tools: existing industry-standard (System)Verilog or VHDL code can be integrated into an nMigen design flow, or, conversely, nMigen code can be integrated into an existing Verilog-based design flow.
 
+Like many FOSS Projects listed on Wikipedia_, nMigen is a
+Registered Trademark_ of M-Labs.  Its
+source code is Licensed under a BSD 2-Clause License.
+
+.. _Wikipedia: https://en.wikipedia.org/wiki/List_of_trademarked_open-source_software
+.. _Trademark: https://uspto.report/TM/88980893
 .. TODO: add links to connect_rpc docs once they exist
 
 
